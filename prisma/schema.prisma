@@ -1,0 +1,138 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id              String         @id @default(uuid())
+  phone           String         @unique
+  password        String         @default("123456")
+  fullName        String?
+  passportSeries  String?
+  pinfl           String?
+  address         String?
+  passportFront   String?
+  passportBack    String?
+  selfieUrl       String?
+  avatar          String?
+  isVerified      Boolean        @default(false)
+  role            String         @default("CLIENT") // CLIENT, ADMIN
+  orders          Order[]
+  verifications   Verification[]
+  transactions    Transaction[]
+  reviews         Review[]
+  createdAt       DateTime       @default(now())
+}
+
+model Product {
+  id           String        @id @default(uuid())
+  title        String
+  category     String        @default("GENERATOR") // GENERATOR, SOLAR_PANEL
+  capacity     String
+  description  String
+  buyPrice     Float?
+  rentPrice    Float?
+  oldBuyPrice  Float?
+  oldRentPrice Float?
+  stock        Int           @default(1)
+  images       String        @default("[]") // JSON string of image URLs
+  usageSpecs   String        @default("[]") // JSON string of appliance runtime estimates
+  isAvailable  Boolean       @default(true)
+  orders       Order[]
+  reviews      Review[]
+  createdAt    DateTime      @default(now())
+}
+
+model Order {
+  id           String        @id @default(uuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id])
+  productId    String
+  product      Product       @relation(fields: [productId], references: [id])
+  type         String        @default("BUY") // BUY, RENT
+  startDate    DateTime?
+  endDate      DateTime?
+  totalAmount  Float
+  status       String        @default("PENDING") // PENDING, APPROVED, ACTIVE, COMPLETED, OVERDUE, LEGAL_PROCESS, CANCELLED
+  legalPdfUrl  String?
+  transactions Transaction[]
+  createdAt    DateTime      @default(now())
+}
+
+model Transaction {
+  id          String   @id @default(uuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id])
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  amount      Float
+  provider    String   // CLICK, PAYME, CASH
+  status      String   // COMPLETED, PENDING, FAILED
+  reference   String?
+  createdAt   DateTime @default(now())
+}
+
+model Verification {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  passportSeries  String
+  pinfl           String
+  passportFront   String?
+  passportBack    String?
+  selfieUrl       String?
+  status          String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  rejectionReason String?
+  createdAt       DateTime @default(now())
+}
+
+model Review {
+  id         String   @id @default(uuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  productId  String?
+  product    Product? @relation(fields: [productId], references: [id])
+  userName   String
+  rating     Int      @default(5)
+  comment    String
+  location   String?  @default("Toshkent")
+  createdAt  DateTime @default(now())
+}
+
+model ContactMessage {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String
+  subject   String?
+  message   String
+  status    String   @default("NEW") // NEW, READ, RESPONDED
+  createdAt DateTime @default(now())
+}
+
+model SiteSettings {
+  id                    String   @id @default("default")
+  telegram              String   @default("https://t.me/meco_solar_uz")
+  instagram             String   @default("https://instagram.com/meco.uzbekistan")
+  phone                 String   @default("+998 71 200 50 50")
+  email                 String   @default("info@meco.uz")
+  address               String   @default("Toshkent sh., Chilonzor t., 10-mavze 4-uy")
+  botToken              String?  @default("")
+  botChatId             String?  @default("")
+  penaltyRate           Float?   @default(0.5)
+  legalNoticeDays       Int?     @default(3)
+  visitCount            Int      @default(1420)
+  deliveryStartHour     Int?     @default(6)   // 6 AM
+  deliveryEndHour       Int?     @default(9)   // 9 AM
+  deliverySlotLabel     String?  @default("06:00 - 09:00 (Ertalabki)")
+  maxRentalDays         Int?     @default(30)  // Default max rental period (days)
+  minRentalDays         Int?     @default(1)   // Default min rental period (days)
+  myIdEnabled           Boolean? @default(true) // MyID Integration Ready toggle (Mock/Ready mode)
+  myIdClientId          String?  @default("")  // Client ID placeholder when tokens arrive
+  myIdClientSecret      String?  @default("")  // Client Secret placeholder when tokens arrive
+  updatedAt             DateTime @updatedAt
+}
+
