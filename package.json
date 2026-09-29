@@ -10,6 +10,8 @@
     "dev:frontend": "npm --prefix frontend run dev",
     "dev:backend": "cd backend && venv/bin/python manage.py runserver",
     "dev:server": "node server/index.js",
+    "start": "node server/index.js",
+    "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "prisma:seed": "node prisma/seed.js",
@@ -23,9 +25,8 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "google-auth-library": "^11.1.0",
-    "jsonwebtoken": "^9.0.3"
-  },
-  "devDependencies": {
+    "jsonwebtoken": "^9.0.3",
     "prisma": "^5.22.0"
-  }
+  },
+  "devDependencies": {}
 }

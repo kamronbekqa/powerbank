@@ -317,27 +317,26 @@ export default function SolarPanelsPage({
                   className="product-card"
                 >
                   {/* Category & Status Badge */}
-                  <div style={{ position: 'absolute', top: '12px', left: '12px', zIndex: 3, display: 'flex', gap: '6px' }}>
-                    <span style={{ 
-                      background: 'rgba(245, 158, 11, 0.9)', 
-                      color: '#fff', 
-                      fontSize: '0.7rem', 
-                      fontWeight: '800', 
-                      padding: '4px 10px', 
-                      borderRadius: '12px',
-                      backdropFilter: 'blur(4px)'
+                  <div className="card-badges">
+                    <span className="badge card-badges-left" style={{
+                      background: 'rgba(245, 158, 11, 0.9)',
+                      color: '#fff',
+                      backdropFilter: 'blur(4px)',
+                      border: 'none'
                     }}>
                       ☀️ QUYOSH PANELI
                     </span>
-                    {product.stock > 0 ? (
-                      <span style={{ background: 'rgba(34, 197, 94, 0.9)', color: '#fff', fontSize: '0.7rem', fontWeight: '800', padding: '4px 8px', borderRadius: '12px' }}>
-                        {headingText.inStock}
-                      </span>
-                    ) : (
-                      <span style={{ background: 'rgba(239, 68, 68, 0.9)', color: '#fff', fontSize: '0.7rem', fontWeight: '800', padding: '4px 8px', borderRadius: '12px' }}>
-                        {headingText.outOfStock}
-                      </span>
-                    )}
+                    <div className="card-badges-right">
+                      {product.stock > 0 ? (
+                        <span className="badge" style={{ background: 'rgba(34, 197, 94, 0.9)', color: '#fff', border: 'none' }}>
+                          {headingText.inStock}
+                        </span>
+                      ) : (
+                        <span className="badge" style={{ background: 'rgba(239, 68, 68, 0.9)', color: '#fff', border: 'none' }}>
+                          {headingText.outOfStock}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Card Image */}

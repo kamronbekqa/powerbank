@@ -236,6 +236,51 @@ body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.card-badges {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  z-index: 3;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.card-badges .badge {
+  pointer-events: none;
+  font-size: 0.62rem;
+  letter-spacing: 0.15px;
+  padding: 3px 8px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.card-badges-left {
+  min-width: 0;
+  max-width: calc(50% - 4px);
+}
+
+.card-badges-right {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+  min-width: 0;
+  max-width: calc(50% - 4px);
+}
+
+.card-badges-right .badge {
+  max-width: 100%;
 }
 
 .badge-pending { background: var(--warning-bg); color: var(--warning); border: 1px solid rgba(217, 119, 6, 0.2); }

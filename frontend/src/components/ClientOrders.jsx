@@ -1,5 +1,6 @@
 import React from 'react';
 import { ShoppingBag, CreditCard } from 'lucide-react';
+import { apiUrl } from '../utils/api';
 
 export default function ClientOrders({ orders = [] }) {
   const getStatusBadge = (status) => {
@@ -82,7 +83,7 @@ export default function ClientOrders({ orders = [] }) {
                           <button 
                             className="btn btn-sm btn-primary" 
                             onClick={async () => {
-                              const res = await fetch('/api/checkout/click', {
+                              const res = await fetch(apiUrl('/api/checkout/click'), {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ orderId: order.id, amount })
@@ -96,7 +97,7 @@ export default function ClientOrders({ orders = [] }) {
                           <button 
                             className="btn btn-sm btn-secondary" 
                             onClick={async () => {
-                              const res = await fetch('/api/checkout/payme', {
+                              const res = await fetch(apiUrl('/api/checkout/payme'), {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ orderId: order.id, amount })

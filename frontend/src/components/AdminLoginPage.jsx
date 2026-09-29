@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Lock, Zap, ShieldAlert, AlertCircle, ArrowRight, Eye, EyeOff, User } from 'lucide-react';
+import { apiUrl } from '../utils/api';
 
 export default function AdminLoginPage({ onLoginSuccess, onGoBack, lang = 'UZ', t = {} }) {
   const [login, setLogin] = useState('');
@@ -17,7 +18,7 @@ export default function AdminLoginPage({ onLoginSuccess, onGoBack, lang = 'UZ', 
     }
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch(apiUrl('/api/auth/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -27,7 +28,9 @@ export default function AdminLoginPage({ onLoginSuccess, onGoBack, lang = 'UZ', 
       try {
         data = await res.json();
       } catch (jsonErr) {
-        throw new Error(lang === 'UZ' ? 'Server javobida xatolik yuz berdi.' : 'Server response error');
+        throw new Error(lang === 'UZ'
+          ? 'Backend ishlamayapti. Netlify faqat frontend. API ni Render/Railway ga joylab, VITE_API_URL ni sozlang.'
+          : 'Server response error. Deploy the API and set VITE_API_URL.');
       }
       if (!res.ok) throw new Error(data.error || (lang === 'UZ' ? 'Kirish xatoligi' : lang === 'RU' ? 'Ошибка входа' : 'Login error'));
       if (data.user?.role !== 'ADMIN') {

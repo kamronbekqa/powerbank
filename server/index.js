@@ -10,11 +10,14 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 const JWT_SECRET = process.env.JWT_SECRET || 'meco_super_secret_jwt_key_2026';
 const TEN_DAYS_MS = 10 * 24 * 60 * 60 * 1000;
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || '';
+const IS_PROD = process.env.NODE_ENV === 'production';
+const CROSS_SITE = Boolean(FRONTEND_ORIGIN);
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax',
+  secure: IS_PROD || CROSS_SITE,
+  sameSite: CROSS_SITE ? 'none' : 'lax',
   maxAge: TEN_DAYS_MS
 };
 
@@ -23,10 +26,22 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3001;
 let telegramPollingStarted = false;
 
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors({
+  origin: FRONTEND_ORIGIN ? FRONTEND_ORIGIN.split(',').map(s => s.trim()) : true,
+  credentials: true
+}));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
+
+app.get('/api/health', async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ ok: true, service: 'meco-backend', database: 'connected' });
+  } catch (error) {
+    res.status(503).json({ ok: false, service: 'meco-backend', database: 'disconnected', error: error.message });
+  }
+});
 
 function setAuthCookie(res, user) {
   const token = jwt.sign(

@@ -7,6 +7,7 @@ import {
   Building, Phone, Mail, MapPin, Save, Send, MessageSquare,
   Smartphone, Laptop, Tv, Fan, Home, Coffee, Car, Flame
 } from 'lucide-react';
+import { apiUrl } from '../utils/api';
 
 export default function AdminCRM({ 
   verifications = [], 
@@ -49,7 +50,7 @@ export default function AdminCRM({
   const refreshTelegramStatus = async () => {
     setTelegramBusy(true);
     try {
-      const response = await fetch('/api/telegram/status');
+      const response = await fetch(apiUrl('/api/telegram/status'));
       const contentType = response.headers.get('content-type') || '';
       if (!contentType.includes('application/json')) {
         throw new Error('Backend API javob bermayapti. 3001-portdagi server ishlayotganini tekshiring.');
@@ -67,7 +68,7 @@ export default function AdminCRM({
     setTelegramBusy(true);
     setTelegramMessage('');
     try {
-      const response = await fetch('/api/telegram/setup-webhook', { method: 'POST' });
+      const response = await fetch(apiUrl('/api/telegram/setup-webhook'), { method: 'POST' });
       if (!(response.headers.get('content-type') || '').includes('application/json')) {
         throw new Error('Backend API javob bermayapti. Serverni ishga tushiring va qayta urinib ko‘ring.');
       }
@@ -1182,12 +1183,17 @@ export default function AdminCRM({
                             background: 'linear-gradient(180deg, rgba(15,23,42,0.65) 0%, rgba(0,0,0,0) 45%, rgba(15,23,42,0.6) 100%)',
                             pointerEvents: 'none'
                           }} />
-                          <span className="badge badge-info" style={{ position: 'absolute', top: '12px', left: '12px', background: 'rgba(15, 23, 42, 0.85)', color: '#38bdf8', backdropFilter: 'blur(6px)', zIndex: 3 }}>
-                            <Zap size={12} style={{ marginRight: '4px' }} /> {product.capacity || 'Solar Generator'}
-                          </span>
-                          <span className="badge badge-success" style={{ position: 'absolute', top: '12px', right: '12px', backdropFilter: 'blur(6px)', zIndex: 3 }}>
-                            {product.stock || 1} dona
-                          </span>
+                          <div className="card-badges">
+                            <span className="badge badge-info card-badges-left" style={{ background: 'rgba(15, 23, 42, 0.85)', color: '#38bdf8', backdropFilter: 'blur(6px)' }}>
+                              <Zap size={12} style={{ flexShrink: 0 }} />
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{product.capacity || 'Solar Generator'}</span>
+                            </span>
+                            <div className="card-badges-right">
+                              <span className="badge badge-success" style={{ backdropFilter: 'blur(6px)' }}>
+                                {product.stock || 1} dona
+                              </span>
+                            </div>
+                          </div>
                         </div>
 
                         <div className="card-body admin-product-card-body" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -1325,12 +1331,16 @@ export default function AdminCRM({
                             e.target.src = 'https://images.unsplash.com/photo-1509391365360-2e959784a276?w=600&auto=format&fit=crop&q=80';
                           }}
                         />
-                        <span className="badge badge-info" style={{ position: 'absolute', top: '12px', left: '12px', background: 'rgba(245, 158, 11, 0.9)', color: '#fff', backdropFilter: 'blur(6px)', zIndex: 3 }}>
-                          ☀️ {product.capacity || 'Quyosh Paneli'}
-                        </span>
-                        <span className="badge badge-success" style={{ position: 'absolute', top: '12px', right: '12px', backdropFilter: 'blur(6px)', zIndex: 3 }}>
-                          {product.stock || 1} dona
-                        </span>
+                        <div className="card-badges">
+                          <span className="badge badge-info card-badges-left" style={{ background: 'rgba(245, 158, 11, 0.9)', color: '#fff', backdropFilter: 'blur(6px)' }}>
+                            ☀️ {product.capacity || 'Quyosh Paneli'}
+                          </span>
+                          <div className="card-badges-right">
+                            <span className="badge badge-success" style={{ backdropFilter: 'blur(6px)' }}>
+                              {product.stock || 1} dona
+                            </span>
+                          </div>
+                        </div>
                       </div>
 
                       <div className="card-body" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -1630,7 +1640,7 @@ export default function AdminCRM({
                         <td><span className="badge badge-danger">{lateDays} kun o'tgan</span></td>
                         <td style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                           <a 
-                            href={`/api/legal/davo-arizasi/${order.id}?format=pdf`} 
+                            href={apiUrl(`/api/legal/davo-arizasi/${order.id}?format=pdf`)} 
                             target="_blank" 
                             rel="noreferrer" 
                             className="btn btn-sm btn-primary"
@@ -1644,7 +1654,7 @@ export default function AdminCRM({
                             className="btn btn-sm btn-secondary"
                             onClick={async () => {
                               try {
-                                const res = await fetch('/api/legal/send-telegram', {
+                                const res = await fetch(apiUrl('/api/legal/send-telegram'), {
                                   method: 'POST',
                                   headers: { 'Content-Type': 'application/json' },
                                   body: JSON.stringify({
@@ -2090,7 +2100,7 @@ export default function AdminCRM({
                     return;
                   }
                   try {
-                    const res = await fetch('/api/settings/admin-credentials', {
+                    const res = await fetch(apiUrl('/api/settings/admin-credentials'), {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ newLogin: newAdminLogin, newPassword: newAdminPassword })

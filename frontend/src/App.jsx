@@ -24,6 +24,7 @@ import AdminCRM from './components/AdminCRM';
 import AdminLoginPage from './components/AdminLoginPage';
 import WishlistPanel from './components/WishlistPanel';
 import { translations } from './utils/translations';
+import { apiUrl } from './utils/api';
 
 
 export default function App() {
@@ -56,7 +57,7 @@ export default function App() {
   useEffect(() => {
     const verifySession = async () => {
       try {
-        const res = await fetch('/api/auth/me', { credentials: 'include' });
+        const res = await fetch(apiUrl('/api/auth/me'), { credentials: 'include' });
         if (res.ok) {
           const data = await res.json();
           if (data.success && data.user) {
@@ -157,7 +158,7 @@ export default function App() {
   // Fetch data from backend API Server & sync user with Database
   const loadData = () => {
     setDataLoading(true);
-    fetch('/api/products')
+    fetch(apiUrl('/api/products'))
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setProducts(data);
@@ -165,35 +166,35 @@ export default function App() {
       .catch(err => console.error('Products fetch error:', err))
       .finally(() => setDataLoading(false));
 
-    fetch('/api/orders')
+    fetch(apiUrl('/api/orders'))
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setOrders(data);
       })
       .catch(err => console.error('Orders fetch error:', err));
 
-    fetch('/api/verifications')
+    fetch(apiUrl('/api/verifications'))
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setVerifications(data);
       })
       .catch(err => console.error('Verifications fetch error:', err));
 
-    fetch('/api/reviews')
+    fetch(apiUrl('/api/reviews'))
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setReviews(data);
       })
       .catch(err => console.error('Reviews fetch error:', err));
 
-    fetch('/api/contacts')
+    fetch(apiUrl('/api/contacts'))
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setContactMessages(data);
       })
       .catch(err => console.error('Contacts fetch error:', err));
 
-    fetch('/api/users')
+    fetch(apiUrl('/api/users'))
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -220,7 +221,7 @@ export default function App() {
       })
       .catch(err => console.error('Users fetch error:', err));
 
-    fetch('/api/settings')
+    fetch(apiUrl('/api/settings'))
       .then(res => res.json())
       .then(data => {
         if (data && data.id) setSiteSettings(data);
@@ -233,7 +234,7 @@ export default function App() {
     // Register visitor count once per browser session
     if (!sessionStorage.getItem('meco_visited')) {
       sessionStorage.setItem('meco_visited', 'true');
-      fetch('/api/stats/visit', { method: 'POST' })
+      fetch(apiUrl('/api/stats/visit'), { method: 'POST' })
         .then(res => res.json())
         .then(data => {
           if (data.visitCount) {
@@ -246,7 +247,7 @@ export default function App() {
 
   const handleSaveSettings = async (newSettings) => {
     try {
-      const res = await fetch('/api/settings', {
+      const res = await fetch(apiUrl('/api/settings'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newSettings)
@@ -289,7 +290,7 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+      await fetch(apiUrl('/api/auth/logout'), { method: 'POST', credentials: 'include' });
     } catch (err) {
       console.error('Logout request failed:', err);
     }
@@ -306,7 +307,7 @@ export default function App() {
 
   const handleAddReview = async (reviewData) => {
     try {
-      const res = await fetch('/api/reviews', {
+      const res = await fetch(apiUrl('/api/reviews'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(reviewData)
@@ -321,7 +322,7 @@ export default function App() {
 
   const handleSendMessage = async (contactData) => {
     try {
-      const res = await fetch('/api/contacts', {
+      const res = await fetch(apiUrl('/api/contacts'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(contactData)
@@ -336,7 +337,7 @@ export default function App() {
 
   const handleDeleteContactMessage = async (id) => {
     try {
-      const res = await fetch(`/api/contacts/${id}`, {
+      const res = await fetch(apiUrl(`/api/contacts/${id}`), {
         method: 'DELETE'
       });
       if (res.ok) {
@@ -355,7 +356,7 @@ export default function App() {
 
   const handleBookOrder = async (orderPayload) => {
     try {
-      const res = await fetch('/api/orders', {
+      const res = await fetch(apiUrl('/api/orders'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(orderPayload)
@@ -367,7 +368,7 @@ export default function App() {
       }
 
       if (orderPayload.type === 'BUY') {
-        const providerEndpoint = orderPayload.paymentProvider === 'PAYME' ? '/api/checkout/payme' : '/api/checkout/click';
+        const providerEndpoint = orderPayload.paymentProvider === 'PAYME' ? apiUrl('/api/checkout/payme') : apiUrl('/api/checkout/click');
         const payRes = await fetch(providerEndpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -397,7 +398,7 @@ export default function App() {
 
   const handleUpdateUserAvatar = async (avatarUrl) => {
     try {
-      const res = await fetch('/api/users/profile', {
+      const res = await fetch(apiUrl('/api/users/profile'), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -437,7 +438,7 @@ export default function App() {
         selfieUrl
       };
 
-      const res = await fetch('/api/verifications', {
+      const res = await fetch(apiUrl('/api/verifications'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -474,7 +475,7 @@ export default function App() {
 
   const handleToggleUserKYC = async (userId, targetStatus) => {
     try {
-      const res = await fetch(`/api/users/${userId}/kyc-status`, {
+      const res = await fetch(apiUrl(`/api/users/${userId}/kyc-status`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -494,7 +495,7 @@ export default function App() {
 
   const handleApproveKYC = async (kycId) => {
     try {
-      const res = await fetch(`/api/verifications/${kycId}`, {
+      const res = await fetch(apiUrl(`/api/verifications/${kycId}`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'APPROVED' })
@@ -509,7 +510,7 @@ export default function App() {
 
   const handleRejectKYC = async (kycId, reason) => {
     try {
-      const res = await fetch(`/api/verifications/${kycId}`, {
+      const res = await fetch(apiUrl(`/api/verifications/${kycId}`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'REJECTED', rejectionReason: reason })
@@ -524,7 +525,7 @@ export default function App() {
 
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
-      await fetch(`/api/orders/${orderId}/status`, {
+      await fetch(apiUrl(`/api/orders/${orderId}/status`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
@@ -537,7 +538,7 @@ export default function App() {
 
   const handleAddProduct = async (newProduct) => {
     try {
-      const res = await fetch('/api/products', {
+      const res = await fetch(apiUrl('/api/products'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newProduct)
@@ -556,7 +557,7 @@ export default function App() {
 
   const handleEditProduct = async (productId, updatedData) => {
     try {
-      const res = await fetch(`/api/products/${productId}`, {
+      const res = await fetch(apiUrl(`/api/products/${productId}`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedData)
@@ -575,7 +576,7 @@ export default function App() {
 
   const handleDeleteProduct = async (productId) => {
     try {
-      const res = await fetch(`/api/products/${productId}`, {
+      const res = await fetch(apiUrl(`/api/products/${productId}`), {
         method: 'DELETE'
       });
       if (res.ok) {

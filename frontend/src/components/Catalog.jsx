@@ -159,35 +159,32 @@ export default function Catalog({ products, onSelectProduct, onViewProduct, onAd
                   pointerEvents: 'none'
                 }} />
 
-                <span className="badge badge-info" style={{ 
-                  position: 'absolute', 
-                  top: '12px', 
-                  left: '12px', 
-                  background: 'rgba(15, 23, 42, 0.85)', 
-                  color: '#38bdf8', 
-                  backdropFilter: 'blur(6px)', 
-                  border: '1px solid rgba(56, 189, 248, 0.3)',
-                  zIndex: 3
-                }}>
-                  <Zap size={12} style={{ marginRight: '4px' }} /> {product.capacity || 'Solar Generator'}
-                </span>
-
-                <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end', zIndex: 3 }}>
-                  {hasDiscount && (
-                    <span className="badge" style={{ 
-                      background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', 
-                      color: '#ffffff', 
-                      fontWeight: '800',
-                      fontSize: '0.75rem',
-                      boxShadow: '0 4px 10px rgba(239, 68, 68, 0.4)',
-                      animation: 'pulse 2s infinite'
-                    }}>
-                      {t.specialOffer || '🔥 AKSIYA CHEGIRMA'}
-                    </span>
-                  )}
-                  <span className={`badge ${product.isAvailable ? 'badge-success' : 'badge-danger'}`} style={{ backdropFilter: 'blur(6px)' }}>
-                    {product.isAvailable ? (t.sotuvda || 'Sotuvda / Ijarada') : (t.band || 'Band')}
+                <div className="card-badges">
+                  <span className="badge badge-info card-badges-left" style={{
+                    background: 'rgba(15, 23, 42, 0.85)',
+                    color: '#38bdf8',
+                    backdropFilter: 'blur(6px)',
+                    border: '1px solid rgba(56, 189, 248, 0.3)'
+                  }}>
+                    <Zap size={12} style={{ flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{product.capacity || 'Solar Generator'}</span>
                   </span>
+
+                  <div className="card-badges-right">
+                    {hasDiscount && (
+                      <span className="badge" style={{
+                        background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                        color: '#ffffff',
+                        fontWeight: '800',
+                        boxShadow: '0 4px 10px rgba(239, 68, 68, 0.4)'
+                      }}>
+                        {t.specialOffer || '🔥 AKSIYA'}
+                      </span>
+                    )}
+                    <span className={`badge ${product.isAvailable ? 'badge-success' : 'badge-danger'}`} style={{ backdropFilter: 'blur(6px)' }}>
+                      {product.isAvailable ? (t.sotuvda || 'Sotuvda / Ijarada') : (t.band || 'Band')}
+                    </span>
+                  </div>
                 </div>
                 {/* Wishlist heart buttons overlay on image */}
                 {onAddToWishlist && (

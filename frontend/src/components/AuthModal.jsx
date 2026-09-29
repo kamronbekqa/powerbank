@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Lock, Phone, User, ArrowRight, AlertCircle, Zap } from 'lucide-react';
 import { GoogleLogin } from '@react-oauth/google';
+import { apiUrl } from '../utils/api';
 
 export default function AuthModal({ onClose, onLoginSuccess, lang = 'UZ', t = {} }) {
   const [isRegister, setIsRegister] = useState(false);
@@ -72,7 +73,7 @@ export default function AuthModal({ onClose, onLoginSuccess, lang = 'UZ', t = {}
     if (!phone) { setErrorMsg(lbl.errorEmpty); return; }
     setLoading(true);
     try {
-      const endpoint = isRegister ? '/api/auth/register' : '/api/auth/login';
+      const endpoint = isRegister ? apiUrl('/api/auth/register') : apiUrl('/api/auth/login');
       const payload = isRegister
         ? { phone, password, fullName, role: 'CLIENT' }
         : { phone, password };
@@ -86,7 +87,11 @@ export default function AuthModal({ onClose, onLoginSuccess, lang = 'UZ', t = {}
       try {
         data = await res.json();
       } catch (jsonErr) {
-        throw new Error(lang === 'UZ' ? 'Server javobida xatolik yuz berdi.' : 'Server error');
+        throw new Error(lang === 'UZ'
+          ? 'Backend API javob bermadi. Render backend URL sini Netlify dagi VITE_API_URL ga kiriting va qayta deploy qiling.'
+          : lang === 'RU'
+            ? 'Backend API не отвечает. Укажите URL Render в Netlify VITE_API_URL и выполните повторный deploy.'
+            : 'Backend API did not respond. Set the Render URL in Netlify VITE_API_URL and redeploy.');
       }
       if (!res.ok) throw new Error(data.error || (lang === 'UZ' ? 'Autentifikatsiyada xatolik' : lang === 'RU' ? 'Ошибка авторизации' : 'Auth error'));
       onLoginSuccess(data.user);
@@ -102,7 +107,7 @@ export default function AuthModal({ onClose, onLoginSuccess, lang = 'UZ', t = {}
     setLoading(true);
     setErrorMsg('');
     try {
-      const res = await fetch('/api/auth/google', {
+      const res = await fetch(apiUrl('/api/auth/google'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
