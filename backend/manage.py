@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""MECO — Django management utility."""
+"""VOLTMAXHUB — Django management utility."""
 import os
 import sys
 

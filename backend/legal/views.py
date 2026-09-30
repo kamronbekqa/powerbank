@@ -1,5 +1,5 @@
 """
-MECO — Legal Court PDF Generator Views
+VOLTMAXHUB — Legal Court PDF Generator Views
 """
 from rest_framework import permissions, status
 from rest_framework.views import APIView

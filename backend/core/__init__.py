@@ -1,3 +1,3 @@
 """
-MECO — Core __init__.py
+VOLTMAXHUB — Core __init__.py
 """

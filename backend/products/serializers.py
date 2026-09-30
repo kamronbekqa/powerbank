@@ -1,5 +1,5 @@
 """
-MECO — Products DRF Serializers
+VOLTMAXHUB — Products DRF Serializers
 """
 from rest_framework import serializers
 from .models import Category, Product

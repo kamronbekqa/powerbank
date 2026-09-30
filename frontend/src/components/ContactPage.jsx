@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
 import { Phone, Mail, MapPin, Clock, Send, MessageSquare, ChevronDown, ChevronUp, CheckCircle } from 'lucide-react';
+import usePageMeta from '../hooks/usePageMeta';
 
 export default function ContactPage({ onSendMessage }) {
+  usePageMeta({
+    title: 'Bizga bog\'lanish',
+    description: 'VOLTMAXHUB bilan bog\'lanish: telefon, Telegram, Instagram, email. Toshkent, O\'zbekiston.'
+  });
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [subject, setSubject] = useState('Umumiy savol');
@@ -26,12 +31,12 @@ export default function ContactPage({ onSendMessage }) {
 
   const faqs = [
     {
-      q: 'Meco generatorini ijaraga olish uchun qanday hujjatlar kerak?',
+      q: 'VoltMax generatorini ijaraga olish uchun qanday hujjatlar kerak?',
       a: 'Ijaraga olish uchun faqat Pasport seriyasi va 14 xonali PINFL (JSHSHIR) kodingiz yetarli. Shaxsiyat rasmiy online KYC formasi orqali 5 minut ichida avtomatik tasdiqlanadi.'
     },
     {
       q: 'Generatordan benzin yoki tutun va shovqin chiqadimi?',
-      a: 'Yo\'q! Meco generatorlari 100% LiFePO4 batareyali quyosh stansiyasidir. Ular mutlaqo shovqinsiz, hid va tutunsiz uyingiz va xonadoningiz ichida xavfsiz ishlaydi.'
+      a: 'Yo\'q! VoltMax generatorlari 100% LiFePO4 batareyali quyosh stansiyasidir. Ular mutlaqo shovqinsiz, hid va tutunsiz uyingiz va xonadoningiz ichida xavfsiz ishlaydi.'
     },
     {
       q: 'Yetkazib berish xizmati mavjudmi?',
@@ -51,31 +56,31 @@ export default function ContactPage({ onSendMessage }) {
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#eff6ff', color: '#2563eb', padding: '4px 12px', borderRadius: '16px', fontSize: '0.8rem', fontWeight: '800', marginBottom: '0.5rem' }}>
           <Phone size={14} /> BIZGA BOG'LANISH VA ALOQA
         </div>
-        <h1 style={{ fontSize: '2.2rem', fontWeight: '800', color: '#0f172a' }}>
-          Meco Qo'llab-Quvvatlash va Markaziy Ofis
+        <h1 style={{ fontSize: '2.2rem', fontWeight: '800', color: 'var(--meco-text-main)' }}>
+          VOLTMAXHUB Qo'llab-Quvvatlash va Markaziy Ofis
         </h1>
-        <p style={{ color: '#64748b', fontSize: '1rem', marginTop: '0.25rem' }}>
+        <p style={{ color: 'var(--meco-text-muted)', fontSize: '1rem', marginTop: '0.25rem' }}>
           Generatorlar ijarasi, xaridi va tijorat hamkorligi bo'yicha savollaringiz bo'lsa biz bilan bog'laning.
         </p>
       </div>
 
       {/* CONTACT INFO GRID */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '3rem' }}>
-        <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--meco-border)', boxShadow: 'var(--shadow-sm)' }}>
+        <div style={{ background: 'var(--meco-card-bg)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--meco-border)', boxShadow: 'var(--shadow-sm)' }}>
           <div style={{ background: '#eff6ff', color: '#2563eb', width: '46px', height: '46px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
             <Phone size={22} />
           </div>
-          <strong style={{ fontSize: '1.05rem', display: 'block', color: '#0f172a' }}>Telefon Raqam:</strong>
-          <span style={{ color: '#2563eb', fontSize: '1.1rem', fontWeight: '800' }}>+998 71 200-00-00</span>
-          <span style={{ color: '#64748b', fontSize: '0.82rem', display: 'block', marginTop: '4px' }}>Dushanba - Yakshanba (24/7)</span>
+          <strong style={{ fontSize: '1.05rem', display: 'block', color: 'var(--meco-text-main)' }}>Telefon Raqam:</strong>
+          <span style={{ color: '#2563eb', fontSize: '1.1rem', fontWeight: '800' }}>+998 71 200 50 50</span>
+          <span style={{ color: 'var(--meco-text-muted)', fontSize: '0.82rem', display: 'block', marginTop: '4px' }}>Dushanba - Yakshanba (24/7)</span>
         </div>
 
-        <div style={{ background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--meco-border)', boxShadow: 'var(--shadow-sm)' }}>
+        <div style={{ background: 'var(--meco-card-bg)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--meco-border)', boxShadow: 'var(--shadow-sm)' }}>
           <div style={{ background: '#f0fdfa', color: '#0d9488', width: '46px', height: '46px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
             <MessageSquare size={22} />
           </div>
-          <strong style={{ fontSize: '1.05rem', display: 'block', color: '#0f172a' }}>Telegram Bot / Chat:</strong>
-          <span style={{ color: '#0d9488', fontSize: '1.1rem', fontWeight: '800' }}>@meco_solar_uz</span>
+          <strong style={{ fontSize: '1.05rem', display: 'block', color: 'var(--meco-text-main)' }}>Telegram Bot / Chat:</strong>
+          <span style={{ color: '#0d9488', fontSize: '1.1rem', fontWeight: '800' }}>@voltmaxhub_uz</span>
           <span style={{ color: '#64748b', fontSize: '0.82rem', display: 'block', marginTop: '4px' }}>Operator bilan jonli muloqot</span>
         </div>
 

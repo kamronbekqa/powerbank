@@ -116,7 +116,7 @@ export default function ProductDetailModal({ product: rawProduct, onClose, onBoo
         return;
       }
       if (!acceptedOferta) {
-        setErrorMsg('MECO RENTAL ommaviy oferta shartlariga rozilik bildirishingiz kerak.');
+        setErrorMsg('VOLTMAXHUB RENTAL ommaviy oferta shartlariga rozilik bildirishingiz kerak.');
         return;
       }
     }
@@ -611,7 +611,7 @@ export default function ProductDetailModal({ product: rawProduct, onClose, onBoo
                     style={{ marginTop: '2px' }}
                   />
                   <span>
-                    Men <strong>MECO RENTAL Ommaviy Oferta Shartnomasi</strong> bilan tanishdim. Uskunani o'z vaqtida qaytarish majburiyatini olaman. Qaytarish muddati 3 kundan oshganda, Uzbekiston Fuqarolik Kodeksi 535, 550-moddalariga muvofiq sud arizasi (Da'vo arizasi) shakllantirilishiga roziman.
+                    Men <strong>VOLTMAXHUB RENTAL Ommaviy Oferta Shartnomasi</strong> bilan tanishdim. Uskunani o'z vaqtida qaytarish majburiyatini olaman. Qaytarish muddati 3 kundan oshganda, Uzbekiston Fuqarolik Kodeksi 535, 550-moddalariga muvofiq sud arizasi (Da'vo arizasi) shakllantirilishiga roziman.
                   </span>
                 </label>
               </div>

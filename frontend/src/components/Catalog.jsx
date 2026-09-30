@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Search, Zap, ShoppingCart, Calendar, CheckCircle2, Eye, BatteryCharging, Image as ImageIcon, Heart } from 'lucide-react';
 import { translateProduct } from '../utils/translations';
 import { ProductCardSkeleton } from './SkeletonLoader';
+import usePageMeta from '../hooks/usePageMeta';
 
 const FALLBACK_IMAGES = [
   'https://images.unsplash.com/photo-1548611716-300181512403?w=800&auto=format&fit=crop&q=80',
@@ -70,10 +71,10 @@ export default function Catalog({ products, onSelectProduct, onViewProduct, onAd
       }}>
         <div style={{ position: 'relative', zIndex: 2, maxWidth: '780px' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(37, 99, 235, 0.3)', border: '1px solid rgba(59, 130, 246, 0.4)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: '700', color: '#60a5fa', marginBottom: '1rem' }}>
-            <Zap size={14} /> MECO OFFICIAL PLATFORM
+            <Zap size={14} /> VOLTMAXHUB OFFICIAL PLATFORM
           </div>
           <h1 style={{ fontSize: '2.2rem', fontWeight: '800', lineHeight: 1.25, marginBottom: '0.75rem', letterSpacing: '-0.5px' }}>
-            {t.heroTitle || "Meco Quyosh Generatorlari va Powerbank Stansiyalari"}
+            {t.heroTitle || "VOLTMAXHUB Quyosh Generatorlari va Powerbank Stansiyalari"}
           </h1>
           <p style={{ color: '#cbd5e1', fontSize: '1rem', lineHeight: 1.6, marginBottom: '1.5rem' }}>
             {t.heroDesc || "Har bir generator qaysi elektr jihoziga va qancha vaqtga yetishini bilib oling."}
@@ -93,7 +94,7 @@ export default function Catalog({ products, onSelectProduct, onViewProduct, onAd
           <input 
             type="text" 
             className="form-input" 
-            placeholder={t.searchPlaceholder || "Meco generator nomini yoki watt sig'imini qidirish..."} 
+            placeholder={t.searchPlaceholder || "VoltMax generator nomini yoki watt sig'imini qidirish..."} 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{ paddingLeft: '42px', height: '46px', fontSize: '0.95rem' }}

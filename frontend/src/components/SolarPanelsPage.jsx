@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Sun, Zap, ShieldCheck, Award, Box, Check, ArrowRight, Eye, ShoppingCart, Calendar } from 'lucide-react';
+import usePageMeta from '../hooks/usePageMeta';
 
 const DEFAULT_SOLAR_PANELS = [
   {
     id: 'solar-1',
-    title: 'Meco 450W Mono PERC Panel',
+    title: 'VOLTMAXHUB 450W Mono PERC Panel',
     category: 'SOLAR_PANEL',
     capacity: '450W / 24V Monocrystalline',
     description: '21.8% yuqori samaradorlikka ega Monokristall quyosh paneli. Shamol va qor yuklamalariga chidamli, IP68 suv o\'tmas korpus va MC4 konnektorlar.',
@@ -24,7 +25,7 @@ const DEFAULT_SOLAR_PANELS = [
   },
   {
     id: 'solar-2',
-    title: 'Meco 550W Bifacial Glass-Glass',
+    title: 'VOLTMAXHUB 550W Bifacial Glass-Glass',
     category: 'SOLAR_PANEL',
     capacity: '550W (+100W Rear Gain)',
     description: 'Ikki tomonlama quyosh nuri yutuvchi Double-Glass Bifacial panel. Orqa tomonidan qo\'shimcha 20% gacha quvvat ishlab chiqaradi.',
@@ -44,7 +45,7 @@ const DEFAULT_SOLAR_PANELS = [
   },
   {
     id: 'solar-3',
-    title: 'Meco 200W Portable Foldable',
+    title: 'VOLTMAXHUB 200W Portable Foldable',
     category: 'SOLAR_PANEL',
     capacity: '200W / 18V Travel Panel',
     description: 'Kemping va sayohatlar uchun buklanadigan yengil portativ quyosh paneli. ETFE qoplamali, og\'irligi atigi 4.2kg.',
@@ -64,7 +65,7 @@ const DEFAULT_SOLAR_PANELS = [
   },
   {
     id: 'solar-4',
-    title: 'Meco 670W Ultra Industrial Panel',
+    title: 'VOLTMAXHUB 670W Ultra Industrial Panel',
     category: 'SOLAR_PANEL',
     capacity: '670W / 40V N-Type TopCon',
     description: 'Tadbirkorlik ob\'yektlari, fermer xo\'jaliklari va sanoat bino tomlari uchun o\'ta baquvvat N-Type TopCon panel.',
@@ -112,7 +113,7 @@ export default function SolarPanelsPage({
 
   const headingText = {
     UZ: {
-      heroBadge: "☀️ MECO HIGH-EFFICIENCY QUYOSH PANELLARI",
+      heroBadge: "☀️ VOLTMAXHUB HIGH-EFFICIENCY QUYOSH PANELLARI",
       heroTitle: "Quyosh Panellari — Bino va Xonadonlar Uchun Avtonom Energiya",
       heroDesc: "Monokristall, Bifacial (ikki tomonlama) hamda buklanuvchan portativ quyosh panellari. 25-30 yillik rasmiy kafolat va yuqori samaradorlik.",
       searchPlaceholder: "Quyosh paneli modeli yoki watt sig'imini qidirish (450W, 550W, 670W)...",
@@ -131,7 +132,7 @@ export default function SolarPanelsPage({
       industrialFilter: "Sanoat Paneli (670W)"
     },
     RU: {
-      heroBadge: "☀️ MECO ВЫСОКОЭФФЕКТИВНЫЕ СОЛНЕЧНЫЕ ПАНЕЛИ",
+      heroBadge: "☀️ VOLTMAXHUB ВЫСОКОЭФФЕКТИВНЫЕ СОЛНЕЧНЫЕ ПАНЕЛИ",
       heroTitle: "Солнечные Панели — Автономная Энергия Для Дома и Бизнеса",
       heroDesc: "Монокристаллические, двусторонние Bifacial и складные портативные панели. Официальная гарантия 25-30 лет и высокий КПД.",
       searchPlaceholder: "Поиск панели по модели или мощности (450W, 550W, 670W)...",
@@ -150,7 +151,7 @@ export default function SolarPanelsPage({
       industrialFilter: "Промышленные (670W)"
     },
     EN: {
-      heroBadge: "☀️ MECO HIGH-EFFICIENCY SOLAR PANELS",
+      heroBadge: "☀️ VOLTMAXHUB HIGH-EFFICIENCY SOLAR PANELS",
       heroTitle: "Solar Panels — Autonomous Power for Homes & Businesses",
       heroDesc: "Monocrystalline, Bifacial double-glass, and portable foldable solar panels. 25-30 year official warranty & max efficiency.",
       searchPlaceholder: "Search panel model or wattage (450W, 550W, 670W)...",

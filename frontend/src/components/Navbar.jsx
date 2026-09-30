@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ShoppingBag, UserCheck, ShieldAlert, Layers, User, LogOut, LogIn, Zap, Home, Star, Phone, Moon, Sun, Globe, Menu, X, ChevronDown, CheckCircle2, Clock, Upload, Camera, Heart, ShoppingCart } from 'lucide-react';
+import VoltMaxLogo from './VoltMaxLogo';
 
 const DEFAULT_AVATARS = [
   { id: 'av1', label: 'Default Male', url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80' },
@@ -54,10 +55,8 @@ export default function Navbar({
     <header className="header">
       <div className="header-inner container">
         {/* Brand Logo & Tag */}
-        <div className="brand" onClick={() => handleNavClick('home')} style={{ cursor: 'pointer', fontSize: '1.15rem', gap: '0.4rem' }}>
-          <Zap size={20} style={{ color: '#2563eb' }} />
-          <span>MECO</span>
-          <span className="brand-badge" style={{ fontSize: '0.6rem', padding: '2px 5px' }}>SOLAR</span>
+        <div className="brand" onClick={() => handleNavClick('home')} style={{ cursor: 'pointer' }}>
+          <VoltMaxLogo size="medium" />
         </div>
 
         {/* Main Navigation Links (Desktop) */}

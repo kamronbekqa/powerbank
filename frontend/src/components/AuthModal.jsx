@@ -16,7 +16,7 @@ export default function AuthModal({ onClose, onLoginSuccess, lang = 'UZ', t = {}
       loginTitle: 'Tizimga Kirish',
       loginSubtitle: 'Shaxsiy kabinet va ijaralaringizni boshqaring',
       registerTitle: "Ro'yxatdan O'tish",
-      registerSubtitle: 'Meco CRM platformasida yangi akkaunt yarating',
+      registerSubtitle: 'VOLTMAXHUB platformasida yangi akkaunt yarating',
       login: 'Kirish',
       register: "Ro'yxatdan O'tish",
       fullName: 'F.I.SH (Ism va Familiya)',
@@ -33,7 +33,7 @@ export default function AuthModal({ onClose, onLoginSuccess, lang = 'UZ', t = {}
       loginTitle: 'Вход в Систему',
       loginSubtitle: 'Личный кабинет и управление арендами',
       registerTitle: 'Регистрация',
-      registerSubtitle: 'Создайте новый аккаунт в платформе Meco CRM',
+      registerSubtitle: 'Создайте новый аккаунт в платформе VOLTMAXHUB',
       login: 'Войти',
       register: 'Регистрация',
       fullName: 'Ф.И.О. (Имя и Фамилия)',
@@ -50,7 +50,7 @@ export default function AuthModal({ onClose, onLoginSuccess, lang = 'UZ', t = {}
       loginTitle: 'User Login',
       loginSubtitle: 'Manage your personal rentals and orders',
       registerTitle: 'Create Account',
-      registerSubtitle: 'Register a new account on Meco CRM platform',
+      registerSubtitle: 'Register a new account on VOLTMAXHUB platform',
       login: 'Login',
       register: 'Register',
       fullName: 'Full Name',
@@ -103,6 +103,8 @@ export default function AuthModal({ onClose, onLoginSuccess, lang = 'UZ', t = {}
     }
   };
 
+  const hasGoogleClientId = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
+
   const handleGoogleSuccess = async (credentialResponse) => {
     setLoading(true);
     setErrorMsg('');
@@ -130,7 +132,8 @@ export default function AuthModal({ onClose, onLoginSuccess, lang = 'UZ', t = {}
   };
 
   const handleGoogleError = () => {
-    setErrorMsg(lbl.googleError);
+    console.error('[Google OAuth Error]: Google orqali kirishda xato. Sababi: Netlify env variable (VITE_GOOGLE_CLIENT_ID) yo\'qligi yoki Google Cloud Authorized Origins sozlanmaganligi.');
+    setErrorMsg(lbl.googleError + " (Client ID yoki Google Cloud Origin sozlamalarini tekshiring)");
   };
 
   return (
@@ -139,7 +142,7 @@ export default function AuthModal({ onClose, onLoginSuccess, lang = 'UZ', t = {}
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ background: 'linear-gradient(135deg, #2563eb, #7c3aed)', width: '42px', height: '42px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ background: 'linear-gradient(135deg, #00F0FF, #2563EB)', width: '42px', height: '42px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Zap size={22} color="#fff" />
             </div>
             <div>
@@ -183,17 +186,23 @@ export default function AuthModal({ onClose, onLoginSuccess, lang = 'UZ', t = {}
 
         {/* Google Sign-In Button — Real OAuth */}
         <div style={{ marginBottom: '1.25rem', display: 'flex', justifyContent: 'center' }}>
-          <GoogleLogin
-            onSuccess={handleGoogleSuccess}
-            onError={handleGoogleError}
-            useOneTap={false}
-            width={380}
-            text="signin_with"
-            locale={lang === 'UZ' ? 'uz' : lang === 'RU' ? 'ru' : 'en'}
-            shape="rectangular"
-            theme="outline"
-            size="large"
-          />
+          {hasGoogleClientId ? (
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              useOneTap={false}
+              width={380}
+              text="signin_with"
+              locale={lang === 'UZ' ? 'uz' : lang === 'RU' ? 'ru' : 'en'}
+              shape="rectangular"
+              theme="outline"
+              size="large"
+            />
+          ) : (
+            <div style={{ fontSize: '0.8rem', color: '#f59e0b', background: 'rgba(245,158,11,0.1)', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid rgba(245,158,11,0.3)', textCenter: 'center', width: '100%' }}>
+              ⚠️ Google kirish sozlanmagan: Netlify environment variables bo'limiga <code>VITE_GOOGLE_CLIENT_ID</code> kiritilishi kerak.
+            </div>
+          )}
         </div>
 
         <div style={{ textAlign: 'center', margin: '0 0 1.25rem 0', position: 'relative' }}>

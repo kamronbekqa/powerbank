@@ -12,7 +12,7 @@ services:
       - key: DATABASE_URL
         value: file:./dev.db
       - key: FRONTEND_ORIGIN
-        value: https://powerbank011.netlify.app
+        value: https://voltmaxhub.uz,https://www.voltmaxhub.uz,https://powerbank011.netlify.app
       - key: JWT_SECRET
         generateValue: true
       - key: TELEGRAM_BOT_TOKEN

@@ -1,5 +1,5 @@
 """
-MECO — Rentals DRF Serializers
+VOLTMAXHUB — Rentals DRF Serializers
 """
 from rest_framework import serializers
 from .models import RentalOrder

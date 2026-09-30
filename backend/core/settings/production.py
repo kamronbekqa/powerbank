@@ -1,5 +1,5 @@
 """
-MECO Settings — Production
+VOLTMAXHUB Settings — Production
 """
 from .base import *
 

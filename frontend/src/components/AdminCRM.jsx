@@ -35,17 +35,46 @@ export default function AdminCRM({
   const [orderStatusFilter, setOrderStatusFilter] = useState('ALL');
   const [settingsSaved, setSettingsSaved] = useState(false);
   const [companyPhone, setCompanyPhone] = useState(siteSettings?.phone || '+998 71 200 50 50');
-  const [companyEmail, setCompanyEmail] = useState(siteSettings?.email || 'info@meco.uz');
+  const [companyEmail, setCompanyEmail] = useState(siteSettings?.email || 'info@voltmaxhub.uz');
   const [companyAddress, setCompanyAddress] = useState(siteSettings?.address || 'Toshkent sh., Chilonzor t., 10-mavze 4-uy');
-  const [companyTelegram, setCompanyTelegram] = useState(siteSettings?.telegram || 'https://t.me/meco_solar_uz');
-  const [companyInstagram, setCompanyInstagram] = useState(siteSettings?.instagram || 'https://instagram.com/meco.uzbekistan');
+  const [companyTelegram, setCompanyTelegram] = useState(siteSettings?.telegram || 'https://t.me/voltmaxhub_uz');
+  const [companyInstagram, setCompanyInstagram] = useState(siteSettings?.instagram || 'https://instagram.com/voltmaxhub');
+  const [companyName, setCompanyName] = useState(siteSettings?.companyName || 'VOLTMAXHUB');
   const [visitCountInput, setVisitCountInput] = useState(siteSettings?.visitCount !== undefined ? siteSettings.visitCount : 1420);
   const [botChatId, setBotChatId] = useState(siteSettings?.botChatId || '');
+  const [botToken, setBotToken] = useState('');
   const [penaltyRate, setPenaltyRate] = useState(siteSettings?.penaltyRate !== undefined ? siteSettings.penaltyRate : 0.5);
   const [legalNoticeDays, setLegalNoticeDays] = useState(siteSettings?.legalNoticeDays !== undefined ? siteSettings.legalNoticeDays : 3);
   const [telegramStatus, setTelegramStatus] = useState(null);
   const [telegramBusy, setTelegramBusy] = useState(false);
   const [telegramMessage, setTelegramMessage] = useState('');
+  const [botValidationMsg, setBotValidationMsg] = useState('');
+
+  const validateBotSettings = async () => {
+    if (!botToken.trim() || !botChatId.trim()) {
+      setBotValidationMsg('Bot token va Chat ID maydonlarini to\'ldiring.');
+      return;
+    }
+    setTelegramBusy(true);
+    setBotValidationMsg('');
+    try {
+      const res = await fetch(apiUrl('/api/settings/validate-telegram'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ botToken: botToken.trim(), botChatId: botChatId.trim() })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setBotValidationMsg(`✅ ${data.message} Bot: @${data.botInfo?.username || 'N/A'}`);
+      } else {
+        setBotValidationMsg(`❌ ${data.error}`);
+      }
+    } catch (err) {
+      setBotValidationMsg(`❌ Xatolik: ${err.message}`);
+    } finally {
+      setTelegramBusy(false);
+    }
+  };
 
   const refreshTelegramStatus = async () => {
     setTelegramBusy(true);
@@ -103,6 +132,7 @@ export default function AdminCRM({
     if (siteSettings?.address) setCompanyAddress(siteSettings.address);
     if (siteSettings?.telegram) setCompanyTelegram(siteSettings.telegram);
     if (siteSettings?.instagram) setCompanyInstagram(siteSettings.instagram);
+    if (siteSettings?.companyName) setCompanyName(siteSettings.companyName);
     if (siteSettings?.visitCount !== undefined) setVisitCountInput(siteSettings.visitCount);
     if (siteSettings?.botChatId) setBotChatId(siteSettings.botChatId);
     if (siteSettings?.penaltyRate !== undefined) setPenaltyRate(siteSettings.penaltyRate);
@@ -349,7 +379,7 @@ export default function AdminCRM({
     
     const finalImages = imagesList.length > 0 
       ? imagesList 
-      : ['/assets/meco_320wh.png'];
+      : ['/assets/default-product.png'];
 
     onAddProduct({
       title,
@@ -398,7 +428,7 @@ export default function AdminCRM({
       <aside className="admin-sidebar">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
           <div style={{ fontSize: '0.72rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: '800' }}>
-            MECO CRM
+            VOLTMAXHUB CRM
           </div>
           {onRefreshData && (
             <button onClick={onRefreshData} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }} title="Yangilash">
@@ -733,7 +763,7 @@ export default function AdminCRM({
                           </td>
                           <td style={{ padding: '12px' }}>
                             <strong style={{ color: 'var(--meco-text-main)', display: 'block' }}>
-                              {ord.product?.title || ord.product_title || 'MECO Generator'}
+                              {ord.product?.title || ord.product_title || 'VOLTMAXHUB Generator'}
                             </strong>
                             <span style={{ fontSize: '0.78rem', color: '#2563eb', fontWeight: '700' }}>
                               {ord.product?.capacity || ord.capacity || '1kWh'}
@@ -1279,7 +1309,7 @@ export default function AdminCRM({
                   Quyosh Panellari Boshqaruvi ({products.filter(p => p.category === 'SOLAR_PANEL' || p.title.toLowerCase().includes('panel')).length} ta panel)
                 </h1>
                 <p style={{ color: 'var(--meco-text-muted)', fontSize: '0.9rem' }}>
-                  Meco quyosh panellari kartochkalarini tahrirlash, yangi panel qo'shish yoki o'chirish.
+                  VOLTMAXHUB quyosh panellari kartochkalarini tahrirlash, yangi panel qo'shish yoki o'chirish.
                 </p>
               </div>
 
@@ -1517,7 +1547,7 @@ export default function AdminCRM({
                     if (orderStatusFilter === 'OVERDUE') return ['OVERDUE', 'LEGAL_PROCESS'].includes(order.status) || order.is_overdue;
                     return true;
                   }).map(order => {
-                    const prodTitle = order.product?.title || order.product_detail?.title || 'Meco Generator';
+                    const prodTitle = order.product?.title || order.product_detail?.title || 'VOLTMAXHUB Generator';
                     const uPhone = order.user?.phone || order.user_phone || '+998901234567';
                     const startStr = order.startDate ? new Date(order.startDate).toLocaleDateString('uz-UZ') : (order.start_date || '—');
                     const endStr = order.endDate ? new Date(order.endDate).toLocaleDateString('uz-UZ') : (order.end_date || '—');
@@ -1622,7 +1652,7 @@ export default function AdminCRM({
                     const uPhone = order.user?.phone || order.user_phone || '+998901234567';
                     const pSeries = order.user?.passportSeries || 'AA1234567';
                     const pinfl = order.user?.pinfl || '31204958390124';
-                    const prodTitle = order.product?.title || order.product_detail?.title || 'Meco 2kWh';
+                    const prodTitle = order.product?.title || order.product_detail?.title || 'VOLTMAXHUB 2kWh';
                     const baseAmount = Number(order.totalAmount || order.total_price || 2800000);
                     const totalClaim = Math.round(baseAmount * 1.15);
                     const lateDays = order.endDate ? Math.floor((Date.now() - new Date(order.endDate).getTime()) / 86400000) : 0;
@@ -1691,7 +1721,7 @@ export default function AdminCRM({
         {activeTab === 'add-product' && (
           <div style={{ maxWidth: '680px', margin: '0 auto' }}>
             <h1 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '1.25rem', color: '#0f172a' }}>
-              Yangi Meco Generator Qo'shish
+              Yangi VOLTMAXHUB Generator Qo'shish
             </h1>
 
             <form onSubmit={handleCreateProduct} style={{ background: '#fff', padding: '1.75rem', borderRadius: '20px', border: '1px solid var(--meco-border)', boxShadow: 'var(--shadow-md)' }}>
@@ -1842,7 +1872,7 @@ export default function AdminCRM({
 
               <div className="form-group">
                 <label className="form-label">Mahsulot Nomi</label>
-                <input type="text" className="form-input" placeholder="Masalan: Meco 3.6kWh Pro yoki Meco 550W Panel" value={title} onChange={e => setTitle(e.target.value)} required />
+                <input type="text" className="form-input" placeholder="Masalan: VOLTMAXHUB 3.6kWh Pro yoki VOLTMAXHUB 550W Panel" value={title} onChange={e => setTitle(e.target.value)} required />
               </div>
 
               <div className="form-group">
@@ -2141,6 +2171,14 @@ export default function AdminCRM({
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                  <label className="form-label">
+                    <Building size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+                    Kompaniya Rasmiy Nomi (PDF, Shartnomalar, Footer)
+                  </label>
+                  <input type="text" className="form-input" value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="VOLTMAXHUB" />
+                </div>
+
                 <div className="form-group">
                   <label className="form-label">
                     <Phone size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
@@ -2162,7 +2200,7 @@ export default function AdminCRM({
                     <Send size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
                     Telegram Kanal / Bot Havolasi
                   </label>
-                  <input type="text" className="form-input" placeholder="https://t.me/meco_solar_uz" value={companyTelegram} onChange={e => setCompanyTelegram(e.target.value)} />
+                  <input type="text" className="form-input" placeholder="https://t.me/voltmaxhub_uz" value={companyTelegram} onChange={e => setCompanyTelegram(e.target.value)} />
                 </div>
 
                 <div className="form-group">
@@ -2170,7 +2208,7 @@ export default function AdminCRM({
                     <Globe size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
                     Instagram Sahifa Havolasi
                   </label>
-                  <input type="text" className="form-input" placeholder="https://instagram.com/meco.uzbekistan" value={companyInstagram} onChange={e => setCompanyInstagram(e.target.value)} />
+                  <input type="text" className="form-input" placeholder="https://instagram.com/voltmaxhub" value={companyInstagram} onChange={e => setCompanyInstagram(e.target.value)} />
                 </div>
 
                 <div className="form-group" style={{ gridColumn: 'span 2' }}>
@@ -2208,6 +2246,50 @@ export default function AdminCRM({
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+
+                <div className="form-group">
+                  <label className="form-label">Telegram Bot Token (Serverda himoyalangan)</label>
+                  <input 
+                    type="password" 
+                    className="form-input" 
+                    placeholder="Bot tokenini kiriting (masalan: 123456:ABC-DEF...)" 
+                    value={botToken || ''} 
+                    onChange={e => setBotToken(e.target.value)} 
+                  />
+                  <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                    Token faqat serverda saqlanadi, frontendga qaytarilmaydi. Bo'sh qoldirish — o'zgartirmaslik.
+                  </span>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Admin Chat ID (Raqamli ID)</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="Admin chat ID (masalan: 123456789)" 
+                    value={botChatId} 
+                    onChange={e => setBotChatId(e.target.value)} 
+                  />
+                  <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Botga /start yuborgan adminning chat ID raqami.</span>
+                </div>
+
+                <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <label className="form-label">Bot Sozlamalarini Tasdiqlash</label>
+                  <button 
+                    type="button" 
+                    className="btn btn-secondary" 
+                    onClick={validateBotSettings}
+                    disabled={telegramBusy || !botToken.trim() || !botChatId.trim()}
+                    style={{ fontWeight: '700', justifyContent: 'center' }}
+                  >
+                    {telegramBusy ? '⏳ Tekshirilmoqda...' : '✅ Token va Chat ID ni Tasdiqlash'}
+                  </button>
+                  {botValidationMsg && (
+                    <span style={{ fontSize: '0.78rem', fontWeight: '600', color: botValidationMsg.includes('✅') ? '#16a34a' : '#dc2626' }}>
+                      {botValidationMsg}
+                    </span>
+                  )}
+                </div>
 
                 <div className="form-group">
                   <label className="form-label">Penya Stavkasi (% kunlik)</label>
@@ -2304,7 +2386,9 @@ export default function AdminCRM({
                     address: companyAddress,
                     telegram: companyTelegram,
                     instagram: companyInstagram,
+                    companyName,
                     botChatId,
+                    botToken: botToken || undefined,
                     penaltyRate,
                     legalNoticeDays,
                     visitCount: visitCountInput,

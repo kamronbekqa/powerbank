@@ -1,5 +1,5 @@
 """
-MECO — Rental Order Model & Engine
+VOLTMAXHUB — Rental Order Model & Engine
 """
 from django.db import models
 from django.conf import settings

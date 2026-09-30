@@ -1,4 +1,4 @@
-# MECO Backend — Python Dependencies
+# VOLTMAXHUB Backend — Python Dependencies
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Django Core

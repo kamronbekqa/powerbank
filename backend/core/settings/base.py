@@ -1,5 +1,5 @@
 """
-MECO Django Settings — Base
+VOLTMAXHUB Django Settings — Base
 """
 from pathlib import Path
 import os
@@ -44,7 +44,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_filters',
 
-    # MECO apps
+    # VOLTMAXHUB apps
     'accounts',
     'products',
     'rentals',
@@ -93,8 +93,8 @@ AUTH_USER_MODEL = 'accounts.User'
 DATABASES = {
     'default': {
         'ENGINE': env('DB_ENGINE', 'django.db.backends.postgresql'),
-        'NAME': env('DB_NAME', 'meco_db'),
-        'USER': env('DB_USER', 'meco_user'),
+        'NAME': env('DB_NAME', 'voltmaxhub_db'),
+        'USER': env('DB_USER', 'voltmaxhub_user'),
         'PASSWORD': env('DB_PASSWORD', ''),
         'HOST': env('DB_HOST', 'localhost'),
         'PORT': env('DB_PORT', '5432'),
@@ -160,7 +160,7 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = env_list(
     'CORS_ALLOWED_ORIGINS',
-    'http://localhost:5173,http://127.0.0.1:5173'
+    'https://voltmaxhub.uz,https://www.voltmaxhub.uz,https://powerbank011.netlify.app'
 )
 
 # ── Celery ────────────────────────────────────────────────────────────────────
@@ -179,11 +179,11 @@ CELERY_BEAT_SCHEDULE = {
 CLICK_MERCHANT_ID = env('CLICK_MERCHANT_ID', '')
 CLICK_SERVICE_ID = env('CLICK_SERVICE_ID', '')
 CLICK_SECRET_KEY = env('CLICK_SECRET_KEY', '')
-CLICK_RETURN_URL = env('CLICK_RETURN_URL', 'http://localhost:5173/payment/success')
+CLICK_RETURN_URL = env('CLICK_RETURN_URL', 'https://voltmaxhub.uz/payment/success')
 
 PAYME_MERCHANT_ID = env('PAYME_MERCHANT_ID', '')
 PAYME_SECRET_KEY = env('PAYME_SECRET_KEY', '')
-PAYME_RETURN_URL = env('PAYME_RETURN_URL', 'http://localhost:5173/payment/success')
+PAYME_RETURN_URL = env('PAYME_RETURN_URL', 'https://voltmaxhub.uz/payment/success')
 
 # ── Notifications (optional) ──────────────────────────────────────────────────
 TELEGRAM_BOT_TOKEN = env('TELEGRAM_BOT_TOKEN', '')

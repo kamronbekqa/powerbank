@@ -1,19 +1,34 @@
-/* MECO Rental Platform & Admin CRM — Full Design System */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+/* VOLTMAXHUB Solar Power & Rental Platform — Full Design System */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
 
 :root {
-  --meco-primary: #2563eb;
-  --meco-primary-dark: #1d4ed8;
-  --meco-primary-light: #eff6ff;
-  --meco-accent: #0284c7;
-  --meco-dark: #0f172a;
-  --meco-slate: #1e293b;
-  --meco-card-bg: #ffffff;
-  --meco-bg: #f8fafc;
-  --meco-border: #e2e8f0;
-  --meco-text-main: #0f172a;
-  --meco-text-muted: #64748b;
-  --meco-header-bg: #ffffff;
+  --voltmaxhub-primary: #0284c7;
+  --voltmaxhub-primary-dark: #0369a1;
+  --voltmaxhub-primary-light: #f0f9ff;
+  --voltmaxhub-accent: #00F0FF;
+  --voltmaxhub-gold: #FFB800;
+  --voltmaxhub-dark: #0f172a;
+  --voltmaxhub-slate: #1e293b;
+  --voltmaxhub-card-bg: #ffffff;
+  --voltmaxhub-bg: #f8fafc;
+  --voltmaxhub-border: #e2e8f0;
+  --voltmaxhub-text-main: #0f172a;
+  --voltmaxhub-text-muted: #64748b;
+  --voltmaxhub-header-bg: #ffffff;
+
+  /* Aliasing legacy --meco-* variables to new --voltmaxhub-* design system */
+  --meco-primary: var(--voltmaxhub-primary);
+  --meco-primary-dark: var(--voltmaxhub-primary-dark);
+  --meco-primary-light: var(--voltmaxhub-primary-light);
+  --meco-accent: var(--voltmaxhub-accent);
+  --meco-dark: var(--voltmaxhub-dark);
+  --meco-slate: var(--voltmaxhub-slate);
+  --meco-card-bg: var(--voltmaxhub-card-bg);
+  --meco-bg: var(--voltmaxhub-bg);
+  --meco-border: var(--voltmaxhub-border);
+  --meco-text-main: var(--voltmaxhub-text-main);
+  --meco-text-muted: var(--voltmaxhub-text-muted);
+  --meco-header-bg: var(--voltmaxhub-header-bg);
   
   --success: #16a34a;
   --success-bg: #f0fdf4;
@@ -33,17 +48,29 @@
 
 /* DARK MODE OVERRIDES */
 body.dark-theme {
-  --meco-primary: #3b82f6;
-  --meco-primary-dark: #2563eb;
-  --meco-primary-light: #1e293b;
-  --meco-dark: #0b0f19;
-  --meco-slate: #0f172a;
-  --meco-card-bg: #151d30;
-  --meco-bg: #0b0f19;
-  --meco-border: #26334d;
-  --meco-text-main: #f8fafc;
-  --meco-text-muted: #94a3b8;
-  --meco-header-bg: #111827;
+  --voltmaxhub-primary: #38bdf8;
+  --voltmaxhub-primary-dark: #0284c7;
+  --voltmaxhub-primary-light: #1e293b;
+  --voltmaxhub-dark: #090d16;
+  --voltmaxhub-slate: #0f172a;
+  --voltmaxhub-card-bg: #131b2e;
+  --voltmaxhub-bg: #090d16;
+  --voltmaxhub-border: #23314d;
+  --voltmaxhub-text-main: #f8fafc;
+  --voltmaxhub-text-muted: #94a3b8;
+  --voltmaxhub-header-bg: #0d1322;
+  
+  --meco-primary: var(--voltmaxhub-primary);
+  --meco-primary-dark: var(--voltmaxhub-primary-dark);
+  --meco-primary-light: var(--voltmaxhub-primary-light);
+  --meco-dark: var(--voltmaxhub-dark);
+  --meco-slate: var(--voltmaxhub-slate);
+  --meco-card-bg: var(--voltmaxhub-card-bg);
+  --meco-bg: var(--voltmaxhub-bg);
+  --meco-border: var(--voltmaxhub-border);
+  --meco-text-main: var(--voltmaxhub-text-main);
+  --meco-text-muted: var(--voltmaxhub-text-muted);
+  --meco-header-bg: var(--voltmaxhub-header-bg);
   
   --success-bg: rgba(22, 163, 74, 0.15);
   --warning-bg: rgba(217, 119, 6, 0.15);
@@ -665,6 +692,15 @@ body.dark-theme .skeleton {
   100% { background-position: -200% 0; }
 }
 
+@keyframes voltmax-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 @keyframes meco-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes voltmax-spin {
   to { transform: rotate(360deg); }
 }

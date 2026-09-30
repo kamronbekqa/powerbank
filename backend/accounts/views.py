@@ -1,5 +1,5 @@
 """
-MECO — Accounts & KYC Views
+VOLTMAXHUB — Accounts & KYC Views
 """
 from rest_framework import status, permissions, generics
 from rest_framework.response import Response

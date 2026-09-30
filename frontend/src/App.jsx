@@ -25,12 +25,13 @@ import AdminLoginPage from './components/AdminLoginPage';
 import WishlistPanel from './components/WishlistPanel';
 import { translations } from './utils/translations';
 import { apiUrl } from './utils/api';
+import VoltMaxLogo from './components/VoltMaxLogo';
 
 
 export default function App() {
   const [activeTab, setActiveTab] = useState(() => {
     try {
-      const saved = localStorage.getItem('meco_active_tab');
+      const saved = localStorage.getItem('voltmaxhub_active_tab') || localStorage.getItem('voltmaxhub_active_tab');
       if (saved) return saved;
     } catch (e) {}
     return 'home';
@@ -42,7 +43,7 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('meco_active_tab', activeTab);
+      localStorage.setItem('voltmaxhub_active_tab', activeTab);
     } catch (e) {}
   }, [activeTab]);
 
@@ -101,10 +102,10 @@ export default function App() {
   const [users, setUsers] = useState([]);
   const [contactMessages, setContactMessages] = useState([]);
   const [siteSettings, setSiteSettings] = useState({
-    telegram: 'https://t.me/meco_solar_uz',
-    instagram: 'https://instagram.com/meco.uzbekistan',
+    telegram: 'https://t.me/voltmaxhub_uz',
+    instagram: 'https://instagram.com/voltmaxhub.uz',
     phone: '+998 71 200 50 50',
-    email: 'info@meco.uz',
+    email: 'info@voltmaxhub.uz',
     address: 'Toshkent sh., Chilonzor t., 10-mavze 4-uy',
     visitCount: 0
   });
@@ -119,13 +120,13 @@ export default function App() {
   // Wishlist / Cart state (persisted in localStorage)
   const [wishlist, setWishlist] = useState(() => {
     try {
-      const saved = localStorage.getItem('meco_wishlist');
+      const saved = localStorage.getItem('voltmaxhub_wishlist');
       return saved ? JSON.parse(saved) : [];
     } catch { return []; }
   });
 
   useEffect(() => {
-    try { localStorage.setItem('meco_wishlist', JSON.stringify(wishlist)); } catch {}
+    try { localStorage.setItem('voltmaxhub_wishlist', JSON.stringify(wishlist)); } catch {}
   }, [wishlist]);
 
   const handleAddToWishlist = (product, tag = 'favorite') => {
@@ -232,8 +233,8 @@ export default function App() {
   useEffect(() => {
     loadData();
     // Register visitor count once per browser session
-    if (!sessionStorage.getItem('meco_visited')) {
-      sessionStorage.setItem('meco_visited', 'true');
+    if (!sessionStorage.getItem('voltmaxhub_visited')) {
+      sessionStorage.setItem('voltmaxhub_visited', 'true');
       fetch(apiUrl('/api/stats/visit'), { method: 'POST' })
         .then(res => res.json())
         .then(data => {
@@ -296,7 +297,7 @@ export default function App() {
     }
     setUser(null);
     setActiveTab('home');
-    try { localStorage.setItem('meco_active_tab', 'home'); } catch (e) {}
+    try { localStorage.setItem('voltmaxhub_active_tab', 'home'); } catch (e) {}
     showToast(
       lang === 'RU' ? 'Вы вышли из системы.' :
       lang === 'EN' ? 'You have been logged out.' :
@@ -595,9 +596,10 @@ export default function App() {
   if (authChecking) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--meco-bg)' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ width: '40px', height: '40px', border: '3px solid rgba(37,99,235,0.2)', borderTop: '3px solid #2563eb', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
-          <div style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: '600' }}>MECO yuklanyapti...</div>
+        <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+          <VoltMaxLogo size="large" />
+          <div style={{ width: '36px', height: '36px', border: '3px solid rgba(0,240,255,0.2)', borderTop: '3px solid #00F0FF', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginTop: '8px' }} />
+          <div style={{ color: 'var(--meco-text-muted)', fontSize: '0.88rem', fontWeight: '700', letterSpacing: '0.5px' }}>VOLTMAXHUB yuklanyapti...</div>
         </div>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
@@ -722,10 +724,10 @@ export default function App() {
       <footer style={{ background: '#0b0f19', color: '#94a3b8', padding: '2.5rem 2rem 1.5rem 2rem', borderTop: '1px solid #1e293b', marginTop: 'auto' }}>
         <div className="container footer-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '2rem', marginBottom: '2rem' }}>
           <div>
-            <strong style={{ color: '#fff', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Zap size={22} style={{ color: '#2563eb' }} /> MECO SOLAR CRM
-            </strong>
-            <p style={{ fontSize: '0.85rem', marginTop: '8px', color: '#94a3b8', lineHeight: '1.6' }}>
+            <div style={{ marginBottom: '12px' }}>
+              <VoltMaxLogo size="medium" />
+            </div>
+            <p style={{ fontSize: '0.85rem', color: '#94a3b8', lineHeight: '1.6' }}>
               {lang === 'RU' ? "Платформа №1 в Узбекистане по продаже и аренде солнечных генераторов." : lang === 'EN' ? "N1 Solar Generators Sales & Rental Platform in Uzbekistan." : "O'zbekiston bo'yicha N1 Quyosh Generatorlari Sotuv va Ijara Platformasi."}
             </p>
           </div>
@@ -735,11 +737,11 @@ export default function App() {
               {lang === 'RU' ? "Навигация" : lang === 'EN' ? "Navigation" : "Bo'limlar"}
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.88rem' }}>
-              <span style={{ cursor: 'pointer', color: activeTab === 'home' ? '#2563eb' : '#94a3b8' }} onClick={() => setActiveTab('home')}>{t.home || 'Asosiy'}</span>
-              <span style={{ cursor: 'pointer', color: activeTab === 'catalog' ? '#2563eb' : '#94a3b8' }} onClick={() => setActiveTab('catalog')}>{t.catalog || 'Katalog'}</span>
+              <span style={{ cursor: 'pointer', color: activeTab === 'home' ? '#00F0FF' : '#94a3b8' }} onClick={() => setActiveTab('home')}>{t.home || 'Asosiy'}</span>
+              <span style={{ cursor: 'pointer', color: activeTab === 'catalog' ? '#00F0FF' : '#94a3b8' }} onClick={() => setActiveTab('catalog')}>{t.catalog || 'Katalog'}</span>
               <span style={{ cursor: 'pointer', color: activeTab === 'solar-panels' ? '#f59e0b' : '#94a3b8' }} onClick={() => setActiveTab('solar-panels')}>{t.solarPanels || 'Quyosh Panellari'}</span>
-              <span style={{ cursor: 'pointer', color: activeTab === 'reviews' ? '#2563eb' : '#94a3b8' }} onClick={() => setActiveTab('reviews')}>{t.reviews || 'Sharhlar'}</span>
-              <span style={{ cursor: 'pointer', color: activeTab === 'contact' ? '#2563eb' : '#94a3b8' }} onClick={() => setActiveTab('contact')}>{t.contact || 'Bizga Bog\'lanish'}</span>
+              <span style={{ cursor: 'pointer', color: activeTab === 'reviews' ? '#00F0FF' : '#94a3b8' }} onClick={() => setActiveTab('reviews')}>{t.reviews || 'Sharhlar'}</span>
+              <span style={{ cursor: 'pointer', color: activeTab === 'contact' ? '#00F0FF' : '#94a3b8' }} onClick={() => setActiveTab('contact')}>{t.contact || 'Bizga Bog\'lanish'}</span>
             </div>
           </div>
 
@@ -748,24 +750,24 @@ export default function App() {
               {lang === 'RU' ? "Контакты и Соцсети" : lang === 'EN' ? "Contact & Socials" : "Aloqa va Ijtimoiy Tarmoqlar"}
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', fontSize: '0.88rem' }}>
-              <a href={`tel:${siteSettings?.phone || '+998712005050'}`} style={{ color: '#60a5fa', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '700' }}>
+              <a href={`tel:${siteSettings?.phone || '+998712005050'}`} style={{ color: '#38bdf8', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '700' }}>
                 <Phone size={16} /> {siteSettings?.phone || '+998 71 200 50 50'}
               </a>
-              <a href={siteSettings?.telegram || 'https://t.me/meco_solar_uz'} target="_blank" rel="noopener noreferrer" style={{ color: '#38bdf8', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}>
+              <a href={siteSettings?.telegram || 'https://t.me/voltmaxhub_uz'} target="_blank" rel="noopener noreferrer" style={{ color: '#00F0FF', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}>
                 <Send size={16} /> Telegram: {siteSettings?.telegram?.includes('t.me/') ? '@' + siteSettings.telegram.split('t.me/')[1] : siteSettings?.telegram}
               </a>
-              <a href={siteSettings?.instagram || 'https://instagram.com/meco.uzbekistan'} target="_blank" rel="noopener noreferrer" style={{ color: '#f472b6', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}>
+              <a href={siteSettings?.instagram || 'https://instagram.com/voltmaxhub.uz'} target="_blank" rel="noopener noreferrer" style={{ color: '#f472b6', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '600' }}>
                 <InstagramIcon size={16} /> Instagram: {siteSettings?.instagram?.includes('instagram.com/') ? '@' + siteSettings.instagram.split('instagram.com/')[1] : siteSettings?.instagram}
               </a>
-              <a href={`mailto:${siteSettings?.email || 'info@meco.uz'}`} style={{ color: '#94a3b8', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Mail size={16} /> {siteSettings?.email || 'info@meco.uz'}
+              <a href={`mailto:${siteSettings?.email || 'info@voltmaxhub.uz'}`} style={{ color: '#94a3b8', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Mail size={16} /> {siteSettings?.email || 'info@voltmaxhub.uz'}
               </a>
             </div>
           </div>
         </div>
 
         <div className="container" style={{ borderTop: '1px solid #1e293b', paddingTop: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', fontSize: '0.8rem', color: '#94a3b8' }}>
-          <div>© 2026 MECO Inc. {lang === 'RU' ? "Все права защищены." : lang === 'EN' ? "All rights reserved." : "Barcha huquqlar himoyalangan."}</div>
+          <div>© 2026 VOLTMAXHUB Inc. {lang === 'RU' ? "Все права защищены." : lang === 'EN' ? "All rights reserved." : "Barcha huquqlar himoyalangan."}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#1e293b', padding: '4px 12px', borderRadius: '20px', fontSize: '0.78rem' }}>
             <Eye size={14} style={{ color: '#60a5fa' }} />
             <span>Tashriflar soni: <strong style={{ color: '#fff' }}>{siteSettings?.visitCount || 1420}</strong></span>

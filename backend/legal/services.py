@@ -1,5 +1,5 @@
 """
-MECO Legal Engine — Court Application (Da'vo Arizasi) Generator
+VOLTMAXHUB Legal Engine — Court Application (Da'vo Arizasi) Generator
 Injects defaulted client details & calculates overdue penalty according to Uzbek Civil Code rental guidelines.
 """
 import os
@@ -24,7 +24,7 @@ def generate_davo_arizasi_html(rental_order):
 <html lang="uz">
 <head>
     <meta charset="UTF-8">
-    <title>Da'vo Arizasi — MECO #{rental_order.id}</title>
+    <title>Da'vo Arizasi — VOLTMAXHUB #{rental_order.id}</title>
     <style>
         body {{ font-family: 'Times New Roman', Times, serif; font-size: 14pt; line-height: 1.6; margin: 40px; color: #000; }}
         .header {{ text-align: right; margin-bottom: 30px; font-size: 12pt; }}
@@ -39,7 +39,7 @@ def generate_davo_arizasi_html(rental_order):
 <body>
     <div class="header">
         <strong>Fuqarolik ishlari bo‘yicha tuman sudiga</strong><br>
-        <strong>Da'vogar:</strong> "MECO RENTAL" MChJ<br>
+        <strong>Da'vogar:</strong> "VOLTMAXHUB" MChJ<br>
         <strong>Manzil:</strong> Toshkent sh., Chilonzor t., 10-mavze<br>
         <strong>Javobgar:</strong> {user.get_full_name() or 'Mijoz'}<br>
         <strong>Tel:</strong> {user.phone}<br>
@@ -54,7 +54,7 @@ def generate_davo_arizasi_html(rental_order):
     </div>
 
     <div class="content">
-        Da'vogar "MECO RENTAL" MChJ va javobgar <strong>{user.get_full_name()}</strong> o‘rtasida {rental_order.start_date.strftime('%d.%m.%Y')} yilda ommaviy oferta (ijara shartnomasi) tuzilgan. Shartnomaga muvofiq, da'vogar javobgarga <strong>"{product.title}"</strong> uskunasini {rental_order.start_date.strftime('%d.%m.%Y')} dan {rental_order.end_date.strftime('%d.%m.%Y')} gacha vaqtinchalik foydalanishga bergan.
+        Da'vogar "VOLTMAXHUB" MChJ va javobgar <strong>{user.get_full_name()}</strong> o‘rtasida {rental_order.start_date.strftime('%d.%m.%Y')} yilda ommaviy oferta (ijara shartnomasi) tuzilgan. Shartnomaga muvofiq, da'vogar javobgarga <strong>"{product.title}"</strong> uskunasini {rental_order.start_date.strftime('%d.%m.%Y')} dan {rental_order.end_date.strftime('%d.%m.%Y')} gacha vaqtinchalik foydalanishga bergan.
     </div>
 
     <div class="content">
@@ -87,7 +87,7 @@ def generate_davo_arizasi_html(rental_order):
     <div class="title" style="font-size: 14pt;">SO‘RAYMAN:</div>
 
     <div class="content">
-        1. Javobgar <strong>{user.get_full_name()}</strong> dan da'vogar "MECO RENTAL" MChJ foydasiga <strong>{grand_total:,.0f} UZS</strong> miqdoridagi qarzdorlik va penyani undirishni;
+        1. Javobgar <strong>{user.get_full_name()}</strong> dan da'vogar "VOLTMAXHUB" MChJ foydasiga <strong>{grand_total:,.0f} UZS</strong> miqdoridagi qarzdorlik va penyani undirishni;
     </div>
     <div class="content">
         2. Javobgarga vaqtincha foydalanishga berilgan <strong>"{product.title}"</strong> uskunasini naturada qaytarib berish majburiyatini yuklashni;
@@ -100,7 +100,7 @@ def generate_davo_arizasi_html(rental_order):
     <table style="width: 100%; margin-top: 40px;">
         <tr>
             <td><strong>Sana:</strong> {today.strftime('%d.%m.%Y')} y.</td>
-            <td style="text-align: right;"><strong>"MECO RENTAL" MChJ Direktori: ___________</strong></td>
+            <td style="text-align: right;"><strong>"VOLTMAXHUB" MChJ Direktori: ___________</strong></td>
         </tr>
     </table>
 </body>

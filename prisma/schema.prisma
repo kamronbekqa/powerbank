@@ -115,10 +115,11 @@ model ContactMessage {
 
 model SiteSettings {
   id                    String   @id @default("default")
-  telegram              String   @default("https://t.me/meco_solar_uz")
-  instagram             String   @default("https://instagram.com/meco.uzbekistan")
+  companyName           String   @default("VOLTMAXHUB")
+  telegram              String   @default("https://t.me/voltmaxhub_uz")
+  instagram             String   @default("https://instagram.com/voltmaxhub")
   phone                 String   @default("+998 71 200 50 50")
-  email                 String   @default("info@meco.uz")
+  email                 String   @default("info@voltmaxhub.uz")
   address               String   @default("Toshkent sh., Chilonzor t., 10-mavze 4-uy")
   botToken              String?  @default("")
   botChatId             String?  @default("")

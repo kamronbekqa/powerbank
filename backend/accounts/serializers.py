@@ -1,5 +1,5 @@
 """
-MECO — Accounts & Verification DRF Serializers
+VOLTMAXHUB — Accounts & Verification DRF Serializers
 """
 from rest_framework import serializers
 from .models import User, KYCVerification

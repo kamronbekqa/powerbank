@@ -1,5 +1,5 @@
 """
-MECO Settings — Local Development
+VOLTMAXHUB Settings — Local Development
 """
 from .base import *
 

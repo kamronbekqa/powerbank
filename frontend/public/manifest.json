@@ -1,0 +1,20 @@
+{
+  "name": "VOLTMAXHUB — Solar Power & Rental Platform",
+  "short_name": "VOLTMAXHUB",
+  "description": "O'zbekistondagi eng zamonaviy portativ quyosh generatorlari va quvvat stansiyalarini ijara berish hamda sotish platformasi.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#00F0FF",
+  "orientation": "portrait-primary",
+  "lang": "uz",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["utilities", "shopping", "business"]
+}

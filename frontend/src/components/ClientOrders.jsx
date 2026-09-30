@@ -31,7 +31,7 @@ export default function ClientOrders({ orders = [] }) {
         <div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: '800' }}>Mening Xaridorlik Va Ijaralarim Tarixi</h1>
           <p style={{ color: 'var(--meco-text-muted)', fontSize: '0.9rem' }}>
-            Meco generatorlarini sotib olish va ijaraga olish buyurtmalari ro'yxati
+            VOLTMAXHUB generatorlarini sotib olish va ijaraga olish buyurtmalari ro'yxati
           </p>
         </div>
       </div>
@@ -41,7 +41,7 @@ export default function ClientOrders({ orders = [] }) {
           <ShoppingBag size={48} style={{ color: '#cbd5e1', marginBottom: '1rem' }} />
           <h3 style={{ fontSize: '1.2rem', fontWeight: '700' }}>Sizda hali hech qanday buyurtma mavjud emas</h3>
           <p style={{ color: 'var(--meco-text-muted)', fontSize: '0.9rem', marginTop: '0.5rem' }}>
-            Katalog bo'limidan Meco generatorlarini sotib olishingiz yoki ijaraga olishingiz mumkin.
+            Katalog bo'limidan VOLTMAXHUB generatorlarini sotib olishingiz yoki ijaraga olishingiz mumkin.
           </p>
         </div>
       ) : (
@@ -60,7 +60,7 @@ export default function ClientOrders({ orders = [] }) {
             </thead>
             <tbody>
               {orders.map(order => {
-                const prodTitle = order.product?.title || order.product_detail?.title || 'Meco Generator';
+                const prodTitle = order.product?.title || order.product_detail?.title || 'VOLTMAXHUB Generator';
                 const startStr = order.startDate ? new Date(order.startDate).toLocaleDateString('uz-UZ') : (order.start_date || '—');
                 const endStr = order.endDate ? new Date(order.endDate).toLocaleDateString('uz-UZ') : (order.end_date || '—');
                 const amount = Number(order.totalAmount || order.total_price || 0);

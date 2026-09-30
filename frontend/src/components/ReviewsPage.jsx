@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
 import { Star, MessageSquare, Plus, CheckCircle2, User, MapPin } from 'lucide-react';
+import usePageMeta from '../hooks/usePageMeta';
 
 export default function ReviewsPage({ reviews = [], onAddReview }) {
+  usePageMeta({
+    title: 'Mijozlar sharhlari',
+    description: 'VOLTMAXHUB mijozlarining haqiqiy sharhlari va baholari. Quyosh generatorlari va quyosh panellari haqida fikrlar.'
+  });
   const [showForm, setShowForm] = useState(false);
   const [userName, setUserName] = useState('');
   const [location, setLocation] = useState('Toshkent');
@@ -34,7 +39,7 @@ export default function ReviewsPage({ reviews = [], onAddReview }) {
             Mijozlarimiz Sharhlari va Baholari
           </h1>
           <p style={{ color: '#64748b', fontSize: '1rem', marginTop: '0.25rem' }}>
-            Meco generatorlarini sotib olgan va ijaraga olgan mijozlarimizning real fikrlari.
+            VOLTMAXHUB generatorlarini sotib olgan va ijaraga olgan mijozlarimizning real fikrlari.
           </p>
         </div>
 
@@ -77,7 +82,7 @@ export default function ReviewsPage({ reviews = [], onAddReview }) {
 
           <div className="form-group">
             <label className="form-label">Sharhingiz</label>
-            <textarea className="form-input" rows={4} placeholder="Meco generatorining ishlashi, ijara shartlari va xizmat ko'rsatish haqida fikringiz..." value={comment} onChange={e => setComment(e.target.value)} required></textarea>
+            <textarea className="form-input" rows={4} placeholder="VOLTMAXHUB generatorining ishlashi, ijara shartlari va xizmat ko'rsatish haqida fikringiz..." value={comment} onChange={e => setComment(e.target.value)} required></textarea>
           </div>
 
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>

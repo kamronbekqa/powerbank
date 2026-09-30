@@ -15,9 +15,9 @@ export const translations = {
     themeDark: "Tungi Rejim",
 
     // Banner & Catalog
-    heroTitle: "Meco Quyosh Generatorlari va Powerbank Stansiyalari",
+    heroTitle: "VOLTMAXHUB Quyosh Generatorlari va Powerbank Stansiyalari",
     heroDesc: "Har bir generator qaysi elektr jihoziga va qancha vaqtga yetishini bilib oling.",
-    searchPlaceholder: "Meco generator nomini yoki watt sig'imini qidirish (masalan, 1kWh, 3.6kWh)...",
+    searchPlaceholder: "VoltMax generator nomini yoki watt sig'imini qidirish (masalan, 1kWh, 3.6kWh)...",
     allGenerators: "Barcha Generatorlar",
     models1kWh: "1kWh Modellar",
     models2kWh: "1.8kWh & 2kWh",
@@ -48,7 +48,7 @@ export const translations = {
     lifespanVal: "8000+ sikl (Lifespan)",
     portsOutput: "Portlar & Chiqish:",
     certificationsProtection: "Sertifikatlar & Himoya:",
-    mecoOfficialWarranty: "Meco Rasmiy Kafolati:",
+    voltmaxhubOfficialWarranty: "VOLTMAXHUB Rasmiy Kafolati:",
     warrantyText: "Barcha generatorlar zaryadlash kabellari va kafolat talonlari bilan birga taqdim etiladi. Tezkor va xavfsiz rasmiylashtirish.",
     savingsNotice: "🔥 Chegirma bilan {amount} UZS tejab qoldingiz!",
 
@@ -59,7 +59,7 @@ export const translations = {
     catalogBtn: "Generatorlar Katalogi",
     contactBtn: "Bizga Bog'lanish",
     whichGeneratorTitle: "Qaysi Generator Sizga Mos?",
-    whichGeneratorDesc: "Elektr jihozingiz turini tanlang, tizim sizga kerakli quvvat va Meco modelini tavsiya etadi:",
+    whichGeneratorDesc: "Elektr jihozingiz turini tanlang, tizim sizga kerakli quvvat va VoltMax modelini tavsiya etadi:",
     usagePurpose: "Foydalanish Maqsadi:",
     optFridge: "Uy muzlatgichi + TV + Wi-Fi",
     optAc: "Konditsioner + Xonadon majmuasi",
@@ -67,7 +67,7 @@ export const translations = {
     optCamping: "Kemping / Sayr / Dronlar",
     estPower: "Taxminiy sarf quvvati:",
     recommendedModel: "Tavsiya etilgan model:",
-    whyMecoTitle: "Nima Uchun Aynan MECO Generatorlari?",
+    whyMecoTitle: "Nima Uchun Aynan VOLTMAXHUB Generatorlari?",
     whyMecoDesc: "Eski benzin generatorlaridan voz keching. Zamonaviy, shovqinsiz va quyoshdan quvvat oluvchi stansiyalar.",
     lifep04Title: "LiFePO4 Akkumulyator",
     lifep04Desc: "3500+ marta zaryadlash sikliga va 10 yildan ortiq xizmat qilish muddatiga ega eng xavfsiz batareyalar.",
@@ -92,7 +92,7 @@ export const translations = {
     days: "kun",
 
     // Admin CRM
-    adminTitle: "Meco Solar CRM Dashboard",
+    adminTitle: "VOLTMAXHUB CRM Dashboard",
     totalProducts: "Jami Mahsulotlar",
     totalOrders: "Jami Buyurtmalar",
     activeRentals: "Faol Ijaralar",
@@ -141,9 +141,9 @@ export const translations = {
     themeDark: "Тёмная тема",
 
     // Banner & Catalog
-    heroTitle: "Солнечные Генераторы и Портативные Станции Meco",
+    heroTitle: "Солнечные Генераторы и Портативные Станции VOLTMAXHUB",
     heroDesc: "Узнайте, для каких приборов и на сколько часов хватит каждого генератора.",
-    searchPlaceholder: "Поиск генератора Meco или мощности в Ваттах (например, 1kWh, 3.6kWh)...",
+    searchPlaceholder: "Поиск генератора VoltMax или мощности в Ваттах (например, 1kWh, 3.6kWh)...",
     allGenerators: "Все Генераторы",
     models1kWh: "Модели 1kWh",
     models2kWh: "1.8kWh и 2kWh",
@@ -174,7 +174,7 @@ export const translations = {
     lifespanVal: "8000+ циклов (Lifespan)",
     portsOutput: "Порты и Выходы:",
     certificationsProtection: "Сертификаты и Защита:",
-    mecoOfficialWarranty: "Официальная Гарантия Meco:",
+    voltmaxhubOfficialWarranty: "Официальная Гарантия VOLTMAXHUB:",
     warrantyText: "Все генераторы поставляются с кабелями зарядки и гарантийным талоном. Быстрое и безопасное оформление.",
     savingsNotice: "🔥 Вы сэкономили {amount} сум по скидке!",
 
@@ -185,7 +185,7 @@ export const translations = {
     catalogBtn: "Каталог Генераторов",
     contactBtn: "Связаться с Нами",
     whichGeneratorTitle: "Какой Генератор Вам Подходит?",
-    whichGeneratorDesc: "Выберите тип электроприбора, система порекомендует необходимую мощность и модель Meco:",
+    whichGeneratorDesc: "Выберите тип электроприбора, система порекомендует необходимую мощность и модель VoltMax:",
     usagePurpose: "Цель Использования:",
     optFridge: "Домашний холодильник + ТВ + Wi-Fi",
     optAc: "Кондиционер + Квартирный комплекс",
@@ -193,7 +193,7 @@ export const translations = {
     optCamping: "Кемпинг / Пикник / Дроны",
     estPower: "Примерная мощность:",
     recommendedModel: "Рекомендуемая модель:",
-    whyMecoTitle: "Почему Именно Генераторы MECO?",
+    whyMecoTitle: "Почему Именно Генераторы VOLTMAXHUB?",
     whyMecoDesc: "Откажитесь от старых бензиновых генераторов. Современные, бесшумные станции на солнечной энергии.",
     lifep04Title: "LiFePO4 Аккумулятор",
     lifep04Desc: "Самые безопасные батареи с ресурсом 3500+ циклов зарядки и сроком службы более 10 лет.",
@@ -218,7 +218,7 @@ export const translations = {
     days: "дн.",
 
     // Admin CRM
-    adminTitle: "Панель Управления Meco Solar CRM",
+    adminTitle: "Панель Управления VOLTMAXHUB CRM",
     totalProducts: "Всего Товаров",
     totalOrders: "Всего Заказов",
     activeRentals: "Активная Аренда",
@@ -267,9 +267,10 @@ export const translations = {
     themeDark: "Dark Mode",
 
     // Banner & Catalog
-    heroTitle: "Meco Solar Power Generators & Power Stations",
+    // Banner & Catalog
+    heroTitle: "VOLTMAXHUB Solar Power Generators & Power Stations",
     heroDesc: "Discover estimated appliance runtimes and wattages for every generator model.",
-    searchPlaceholder: "Search Meco generator or capacity in Watts (e.g., 1kWh, 3.6kWh)...",
+    searchPlaceholder: "Search VoltMax generator or capacity in Watts (e.g., 1kWh, 3.6kWh)...",
     allGenerators: "All Generators",
     models1kWh: "1kWh Models",
     models2kWh: "1.8kWh & 2kWh",
@@ -300,7 +301,7 @@ export const translations = {
     lifespanVal: "8000+ cycles (Lifespan)",
     portsOutput: "Ports & Outputs:",
     certificationsProtection: "Certifications & Protection:",
-    mecoOfficialWarranty: "Official Meco Warranty:",
+    voltmaxhubOfficialWarranty: "Official VOLTMAXHUB Warranty:",
     warrantyText: "All generators come with charging cables and official warranty card. Fast & secure process.",
     savingsNotice: "🔥 You saved {amount} UZS with discount!",
 
@@ -311,7 +312,7 @@ export const translations = {
     catalogBtn: "Generators Catalog",
     contactBtn: "Contact Us",
     whichGeneratorTitle: "Which Generator Fits You?",
-    whichGeneratorDesc: "Choose your appliance type, system will calculate required power and recommend Meco model:",
+    whichGeneratorDesc: "Choose your appliance type, system will calculate required power and recommend VoltMax model:",
     usagePurpose: "Usage Purpose:",
     optFridge: "Home Refrigerator + TV + Wi-Fi",
     optAc: "Air Conditioner + House Complex",
@@ -319,7 +320,7 @@ export const translations = {
     optCamping: "Camping / Outdoor / Drones",
     estPower: "Estimated Power:",
     recommendedModel: "Recommended Model:",
-    whyMecoTitle: "Why Choose MECO Generators?",
+    whyMecoTitle: "Why Choose VOLTMAXHUB Generators?",
     whyMecoDesc: "Ditch old petrol generators. Modern, noiseless power stations charged by solar power.",
     lifep04Title: "LiFePO4 Battery",
     lifep04Desc: "Safest batteries with 3500+ recharge cycles and over 10 years of service life.",
@@ -344,7 +345,7 @@ export const translations = {
     days: "days",
 
     // Admin CRM
-    adminTitle: "Meco Solar CRM Dashboard",
+    adminTitle: "VOLTMAXHUB CRM Dashboard",
     totalProducts: "Total Products",
     totalOrders: "Total Orders",
     activeRentals: "Active Rentals",
@@ -402,9 +403,9 @@ export function translateProduct(product, lang = 'UZ') {
     } else if (pTitle.includes('3.6kWh')) {
       translatedDesc = 'Мощный солнечный генератор для больших объектов и домов. Тянет кондиционер и водяной насос.';
     } else if (pTitle.includes('5.4kWh')) {
-      translatedDesc = 'Самая мощная электростанция в линейке Meco. Полностью автономное энергоснабжение.';
+      translatedDesc = 'Самая мощная электростанция в линейке VOLTMAXHUB. Полностью автономное энергоснабжение.';
     } else if (pTitle.includes('Cola Solar')) {
-      translatedDesc = 'Комплект монокристаллических солнечных панелей 1000W. Для быстрой зарядки станций Meco от солнца.';
+      translatedDesc = 'Комплект монокристаллических солнечных панелей 1000W. Для быстрой зарядки станций VOLTMAXHUB от солнца.';
     }
   } else if (lang === 'EN') {
     if (pTitle.includes('320Wh')) {
@@ -422,9 +423,9 @@ export function translateProduct(product, lang = 'UZ') {
     } else if (pTitle.includes('3.6kWh')) {
       translatedDesc = 'High-power solar generator for large properties and houses. Runs air conditioner and water pump.';
     } else if (pTitle.includes('5.4kWh')) {
-      translatedDesc = 'The highest capacity power station in the Meco line. Fully autonomous power supply.';
+      translatedDesc = 'The highest capacity power station in the VOLTMAXHUB line. Fully autonomous power supply.';
     } else if (pTitle.includes('Cola Solar')) {
-      translatedDesc = '1000W monocrystalline solar panel kit. Designed for fast solar charging of Meco power stations.';
+      translatedDesc = '1000W monocrystalline solar panel kit. Designed for fast solar charging of VOLTMAXHUB power stations.';
     }
   }
 

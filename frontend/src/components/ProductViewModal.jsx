@@ -20,7 +20,7 @@ export default function ProductViewModal({ product: rawProduct, onClose, onBuy, 
 
   const allImages = (product.images && product.images.length > 0) 
     ? product.images 
-    : [product.image_url || '/assets/meco_320wh.png'];
+    : [product.image_url || '/assets/default-product.png'];
 
   const currentImage = allImages[selectedImageIdx] || allImages[0];
 
@@ -188,7 +188,7 @@ export default function ProductViewModal({ product: rawProduct, onClose, onBuy, 
           </div>
         </div>
 
-        {/* Technical Specification Parameters Grid (Extracted from MECO Official Sheets) */}
+        {/* Technical Specification Parameters Grid (Extracted from VOLTMAXHUB Official Sheets) */}
         <div style={{ marginBottom: '1.5rem', background: '#f8fafc', padding: '1rem', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
           <h4 style={{ fontSize: '0.95rem', fontWeight: '800', color: '#0f172a', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Cpu size={18} style={{ color: 'var(--meco-primary)' }} /> {t.techParamsTitle || "Texnik Parametrlar & Xavfsizlik (Specification Parameters)"}
@@ -256,7 +256,7 @@ export default function ProductViewModal({ product: rawProduct, onClose, onBuy, 
         {/* Warranty & Delivery Guarantee Banner */}
         <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '0.85rem 1rem', borderRadius: '10px', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px', color: '#166534', fontSize: '0.85rem' }}>
           <ShieldCheck size={20} />
-          <span><strong>{t.mecoOfficialWarranty || "Meco Rasmiy Kafolati:"}</strong> {t.warrantyText || "Barcha generatorlar zaryadlash kabellari va kafolat talonlari bilan birga taqdim etiladi. Tezkor va xavfsiz rasmiylashtirish."}</span>
+          <span><strong>{t.voltmaxhubOfficialWarranty || "VOLTMAXHUB Rasmiy Kafolati:"}</strong> {t.warrantyText || "Barcha generatorlar zaryadlash kabellari va kafolat talonlari bilan birga taqdim etiladi. Tezkor va xavfsiz rasmiylashtirish."}</span>
         </div>
 
         {/* Bottom Actions */}

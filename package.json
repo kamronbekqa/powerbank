@@ -1,8 +1,8 @@
 {
-  "name": "meco-platform",
+  "name": "voltmaxhub-platform",
   "private": true,
   "version": "1.0.0",
-  "description": "MECO Website & Rental Platform",
+  "description": "VOLTMAXHUB Website & Rental Platform",
   "main": "server/index.js",
   "type": "module",
   "scripts": {

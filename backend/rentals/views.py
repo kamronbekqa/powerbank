@@ -1,5 +1,5 @@
 """
-MECO — Rentals & Booking Engine Views
+VOLTMAXHUB — Rentals & Booking Engine Views
 """
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response

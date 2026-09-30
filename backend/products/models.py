@@ -1,5 +1,5 @@
 """
-MECO — Product & Inventory Models
+VOLTMAXHUB — Product & Inventory Models
 """
 from django.db import models
 

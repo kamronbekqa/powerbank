@@ -1,5 +1,5 @@
 """
-MECO — Custom User Model & KYC Verification Models
+VOLTMAXHUB — Custom User Model & KYC Verification Models
 Primary identifier: phone number (not username)
 """
 import re
@@ -43,7 +43,7 @@ class UserManager(BaseUserManager):
 
 class User(AbstractBaseUser, PermissionsMixin):
     """
-    MECO custom user model.
+    VOLTMAXHUB custom user model.
     Phone is used as the primary identifier instead of username.
     """
 

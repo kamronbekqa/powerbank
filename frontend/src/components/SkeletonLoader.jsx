@@ -45,7 +45,7 @@ export function Spinner({ size = 20, color = 'currentColor' }) {
         border: `2px solid ${color}`,
         borderTopColor: 'transparent',
         borderRadius: '50%',
-        animation: 'meco-spin 0.75s linear infinite',
+        animation: 'voltmax-spin 0.75s linear infinite',
         verticalAlign: 'middle'
       }}
     />

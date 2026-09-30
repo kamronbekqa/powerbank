@@ -1,3 +1,3 @@
 """
-MECO Core — __init__.py for settings package
+VOLTMAXHUB Core — __init__.py for settings package
 """

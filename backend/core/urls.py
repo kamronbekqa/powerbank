@@ -1,5 +1,5 @@
 """
-MECO — Django URL Configuration
+VOLTMAXHUB — Django URL Configuration
 """
 from django.contrib import admin
 from django.urls import path, include
@@ -7,9 +7,9 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 # ── Admin branding ────────────────────────────────────────────────────────────
-admin.site.site_header = "MECO Admin"
-admin.site.site_title = "MECO CRM"
-admin.site.index_title = "MECO Boshqaruv Paneli"
+admin.site.site_header = "VOLTMAXHUB Admin"
+admin.site.site_title = "VOLTMAXHUB CRM"
+admin.site.index_title = "VOLTMAXHUB Boshqaruv Paneli"
 
 urlpatterns = [
     # Django Admin (backend CRM)

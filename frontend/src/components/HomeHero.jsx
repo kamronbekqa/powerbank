@@ -1,15 +1,20 @@
 import React, { useState } from 'react';
 import { Zap, ShieldCheck, Clock, CheckCircle2, ArrowRight, BatteryCharging, Sun, Award, HelpCircle } from 'lucide-react';
+import usePageMeta from '../hooks/usePageMeta';
 
 export default function HomeHero({ onGoCatalog, onGoContact, t = {} }) {
+  usePageMeta({
+    title: 'Avtonom energiya: generatorlar va quyosh panellari',
+    description: 'VOLTMAXHUB — O\'zbekistondagi eng zamonaviy portativ quyosh generatorlari va quvvat stansiyalari. Ijara va sotuv.'
+  });
   // Simple Appliance Capacity Calculator State
   const [selectedAppliance, setSelectedAppliance] = useState('fridge');
 
   const calcMap = {
-    fridge: { name: t.optFridge || 'Uy muzlatgichi + TV + Wi-Fi', watts: '300W', recommended: 'Meco 1kWh / 1.8kWh' },
-    ac: { name: t.optAc || 'Konditsioner + Xonadon majmuasi', watts: '1500W', recommended: 'Meco 3.6kWh Pro' },
-    event: { name: t.optEvent || 'To\'y va Tadbirlar (Ovoz va chiroq)', watts: '3000W', recommended: 'Meco 5.4kWh Ultra Monster' },
-    camping: { name: t.optCamping || 'Kemping / Tog\'da dam olish', watts: '150W', recommended: 'Meco 320Wh / Meco 1kWh' }
+    fridge: { name: t.optFridge || 'Uy muzlatgichi + TV + Wi-Fi', watts: '300W', recommended: 'VoltMax 1kWh / 1.8kWh' },
+    ac: { name: t.optAc || 'Konditsioner + Xonadon majmuasi', watts: '1500W', recommended: 'VoltMax 3.6kWh Pro' },
+    event: { name: t.optEvent || 'To\'y va Tadbirlar (Ovoz va chiroq)', watts: '3000W', recommended: 'VoltMax 5.4kWh Ultra Monster' },
+    camping: { name: t.optCamping || 'Kemping / Tog\'da dam olish', watts: '150W', recommended: 'VoltMax 320Wh / VoltMax 1kWh' }
   };
 
   return (
@@ -55,7 +60,7 @@ export default function HomeHero({ onGoCatalog, onGoContact, t = {} }) {
             </div>
 
             <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
-              {t.whichGeneratorDesc || "Elektr jihozingiz turini tanlang, tizim sizga kerakli quvvat va Meco modelini tavsiya etadi:"}
+              {t.whichGeneratorDesc || "Elektr jihozingiz turini tanlang, tizim sizga kerakli quvvat va VoltMax modelini tavsiya etadi:"}
             </p>
 
             <div className="form-group">
@@ -87,15 +92,15 @@ export default function HomeHero({ onGoCatalog, onGoContact, t = {} }) {
         </div>
       </section>
 
-      {/* WHY MECO SECTION */}
+      {/* WHY VOLTMAXHUB SECTION */}
       <section style={{ padding: '4rem 2rem', background: 'var(--meco-card-bg)' }}>
         <div className="container">
           <div style={{ textAlign: 'center', maxWidth: '700px', margin: '0 auto 3rem auto' }}>
             <h2 style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--meco-text-main)', marginBottom: '0.5rem' }}>
-              {t.whyMecoTitle || "Nima Uchun Aynan MECO Generatorlari?"}
+              {t.whyVoltmaxTitle || "Nima Uchun Aynan VOLTMAXHUB Generatorlari?"}
             </h2>
             <p style={{ color: 'var(--meco-text-muted)', fontSize: '1rem' }}>
-              {t.whyMecoDesc || "Eski benzin generatorlaridan voz keching. Zamonaviy, shovqinsiz va quyoshdan quvvat oluvchi stansiyalar."}
+              {t.whyVoltmaxDesc || "Eski benzin generatorlaridan voz keching. Zamonaviy, shovqinsiz va quyoshdan quvvat oluvchi stansiyalar."}
             </p>
           </div>
 

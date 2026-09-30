@@ -6,7 +6,7 @@
 # Netlify faqat frontend (static) ni host qiladi.
 # Backendni Render Blueprint orqali deploy qiling. Netlify > Site configuration >
 # Environment variables ichida VITE_API_URL ni Render service URL ga tenglang
-# (masalan https://meco-backend.onrender.com, oxirida slash bo'lmasin), keyin redeploy qiling.
+# (masalan https://powerbank-eq86.onrender.com, oxirida slash bo'lmasin), keyin redeploy qiling.
 
 [[redirects]]
   from = "/api/*"

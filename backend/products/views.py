@@ -1,5 +1,5 @@
 """
-MECO — Products & Catalog Views
+VOLTMAXHUB — Products & Catalog Views
 """
 from rest_framework import generics, permissions
 from .models import Category, Product

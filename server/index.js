@@ -8,7 +8,8 @@ import cookieParser from 'cookie-parser';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
-const JWT_SECRET = process.env.JWT_SECRET || 'meco_super_secret_jwt_key_2026';
+const JWT_SECRET = process.env.JWT_SECRET || 'voltmaxhub_super_secret_jwt_key_2026';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 const TEN_DAYS_MS = 10 * 24 * 60 * 60 * 1000;
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || '';
 const IS_PROD = process.env.NODE_ENV === 'production';
@@ -26,6 +27,73 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3001;
 let telegramPollingStarted = false;
 
+// ── TELEGRAM DYNAMIC CREDENTIALS & RETRY DISPATCH HELPER ─────────────────────
+async function getTelegramConfig() {
+  let botToken = '';
+  let botChatId = '';
+  try {
+    const settings = await prisma.siteSettings.findUnique({ where: { id: 'default' } });
+    if (settings?.botToken && settings.botToken.trim()) {
+      botToken = settings.botToken.trim();
+    }
+    if (settings?.botChatId && settings.botChatId.trim()) {
+      botChatId = settings.botChatId.trim();
+    }
+  } catch (err) {}
+  // Fallback to env if database not configured
+  if (!botToken) botToken = process.env.TELEGRAM_BOT_TOKEN || '';
+  if (!botChatId) botChatId = process.env.TELEGRAM_CHAT_ID || '';
+  return { botToken, botChatId };
+}
+
+async function sendTelegramNotification({ text, documentBuffer, filename, caption }, attempts = 3) {
+  const { botToken, botChatId } = await getTelegramConfig();
+  if (!botToken || !botChatId) {
+    console.warn('[VOLTMAXHUB Telegram Dispatch]: Telegram Bot Token yoki Admin Chat ID sozlanmagan.');
+    return { success: false, error: 'Telegram Bot Token yoki Admin Chat ID sozlanmagan.' };
+  }
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      if (documentBuffer) {
+        const form = new FormData();
+        form.append('chat_id', botChatId);
+        if (caption) form.append('caption', caption.slice(0, 1024));
+        form.append('document', new Blob([documentBuffer], { type: 'application/pdf' }), filename || 'document.pdf');
+        const res = await fetch(`https://api.telegram.org/bot${botToken}/sendDocument`, { method: 'POST', body: form });
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.description || 'sendDocument API xatoligi');
+        return { success: true, result: json.result };
+      } else if (text) {
+        const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: botChatId, text: text.slice(0, 4000), parse_mode: 'Markdown' })
+        });
+        const json = await res.json();
+        if (!json.ok) {
+          // Retry without parse_mode if markdown parsing failed
+          const fallbackRes = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: botChatId, text: text.slice(0, 4000) })
+          });
+          const fallbackJson = await fallbackRes.json();
+          if (!fallbackJson.ok) throw new Error(fallbackJson.description || 'sendMessage API xatoligi');
+          return { success: true, result: fallbackJson.result };
+        }
+        return { success: true, result: json.result };
+      }
+    } catch (err) {
+      console.error(`[VOLTMAXHUB Telegram Retry ${attempt}/${attempts} Error]:`, err.message);
+      if (attempt < attempts) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      } else {
+        return { success: false, error: err.message };
+      }
+    }
+  }
+}
+
 app.use(cors({
   origin: FRONTEND_ORIGIN ? FRONTEND_ORIGIN.split(',').map(s => s.trim()) : true,
   credentials: true
@@ -37,9 +105,9 @@ app.use(cookieParser());
 app.get('/api/health', async (_req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
-    res.json({ ok: true, service: 'meco-backend', database: 'connected' });
+    res.json({ ok: true, service: 'voltmaxhub-backend', database: 'connected' });
   } catch (error) {
-    res.status(503).json({ ok: false, service: 'meco-backend', database: 'disconnected', error: error.message });
+    res.status(503).json({ ok: false, service: 'voltmaxhub-backend', database: 'disconnected', error: error.message });
   }
 });
 
@@ -117,7 +185,7 @@ app.post('/api/auth/login', async (req, res) => {
       user = await prisma.user.create({
         data: {
           phone: userPhone,
-          password: password || 'admin123',
+          password: password || ADMIN_PASSWORD,
           fullName: 'Bosh Administrator',
           role: 'ADMIN'
         }
@@ -235,7 +303,7 @@ async function ensureSolarPanelsSeed() {
     if (existingPanels.length === 0) {
       const defaultPanels = [
         {
-          title: 'Meco 450W Mono PERC Panel',
+          title: 'MECO 450W Mono PERC Panel',
           category: 'SOLAR_PANEL',
           capacity: '450W / 24V Monocrystalline',
           description: '21.8% yuqori samaradorlikka ega Monokristall quyosh paneli. Shamol va qor yuklamalariga chidamli, IP68 suv o\'tmas korpus va MC4 konnektorlar.',
@@ -254,7 +322,7 @@ async function ensureSolarPanelsSeed() {
           isAvailable: true
         },
         {
-          title: 'Meco 550W Bifacial Glass-Glass',
+          title: 'MECO 550W Bifacial Glass-Glass',
           category: 'SOLAR_PANEL',
           capacity: '550W (+100W Rear Gain)',
           description: 'Ikki tomonlama quyosh nuri yutuvchi Double-Glass Bifacial panel. Orqa tomonidan qo\'shimcha 20% gacha quvvat ishlab chiqaradi.',
@@ -273,7 +341,7 @@ async function ensureSolarPanelsSeed() {
           isAvailable: true
         },
         {
-          title: 'Meco 200W Portable Foldable',
+          title: 'MECO 200W Portable Foldable',
           category: 'SOLAR_PANEL',
           capacity: '200W / 18V Travel Panel',
           description: 'Kemping va sayohatlar uchun buklanadigan yengil portativ quyosh paneli. ETFE qoplamali, og\'irligi atigi 4.2kg.',
@@ -292,7 +360,7 @@ async function ensureSolarPanelsSeed() {
           isAvailable: true
         },
         {
-          title: 'Meco 670W Ultra Industrial Panel',
+          title: 'MECO 670W Ultra Industrial Panel',
           category: 'SOLAR_PANEL',
           capacity: '670W / 40V N-Type TopCon',
           description: "Tadbirkorlik ob'yektlari, fermer xo'jaliklari va sanoat bino tomlari uchun o'ta baquvvat N-Type TopCon panel.",
@@ -533,6 +601,17 @@ app.post('/api/orders', async (req, res) => {
       }
     });
 
+    // Dispatch notification to Telegram Admin Chat
+    sendTelegramNotification({
+      text: `📦 *VOLTMAXHUB — YANGI BUYURTMA!*\n\n` +
+        `👤 *Mijoz:* ${user.fullName || 'Mijoz'}\n` +
+        `📞 *Tel:* ${user.phone}\n` +
+        `⚡️ *Mahsulot:* ${order.product?.title || 'Generator'}\n` +
+        `📋 *Turi:* ${type === 'RENT' ? 'Kunlik Ijara' : 'Xarid (Sotuv)'}\n` +
+        `💰 *Summa:* ${Number(totalAmount).toLocaleString()} UZS\n` +
+        `📅 *Sana:* ${new Date().toLocaleDateString('uz-UZ')}`
+    }).catch(err => console.error('[Order Telegram Error]:', err));
+
     res.json(order);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -612,6 +691,16 @@ app.post('/api/contacts', async (req, res) => {
         message
       }
     });
+
+    // Dispatch notification to Telegram Admin Chat
+    sendTelegramNotification({
+      text: `📩 *VOLTMAXHUB — YANGI MUROJAAT!*\n\n` +
+        `👤 *Ism:* ${name}\n` +
+        `📞 *Tel:* ${phone}\n` +
+        `📌 *Mavzu:* ${subject || 'Umumiy savol'}\n` +
+        `💬 *Xabar:* ${message}`
+    }).catch(err => console.error('[Contact Telegram Error]:', err));
+
     res.json({ success: true, contact });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -659,6 +748,55 @@ app.get('/api/settings', async (req, res) => {
   }
 });
 
+async function validateBotToken(token) {
+  if (!token || !token.trim()) return { valid: false, error: 'Token bo\'sh' };
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token.trim()}/getMe`);
+    const data = await res.json();
+    if (!data.ok) return { valid: false, error: data.description || 'Token noto\'g\'ri' };
+    return { valid: true, botInfo: data.result };
+  } catch (err) {
+    return { valid: false, error: err.message };
+  }
+}
+
+async function validateChatId(token, chatId) {
+  if (!chatId || !chatId.trim()) return { valid: false, error: 'Chat ID bo\'sh' };
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token.trim()}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId.trim(), text: '✅ VOLTMAXHUB Bot sozlamalari tasdiqlandi. Test xabari.' })
+    });
+    const data = await res.json();
+    if (!data.ok) return { valid: false, error: data.description || 'Chat ID noto\'g\'ri yoki bot admin emas' };
+    return { valid: true };
+  } catch (err) {
+    return { valid: false, error: err.message };
+  }
+}
+
+app.post('/api/settings/validate-telegram', async (req, res) => {
+  try {
+    if (req.user?.role !== 'ADMIN') return res.status(403).json({ error: 'Admin ruxsati kerak.' });
+    const { botToken, botChatId } = req.body;
+    
+    const tokenResult = await validateBotToken(botToken);
+    if (!tokenResult.valid) {
+      return res.json({ success: false, error: `Bot token: ${tokenResult.error}` });
+    }
+    
+    const chatResult = await validateChatId(botToken, botChatId);
+    if (!chatResult.valid) {
+      return res.json({ success: false, error: `Chat ID: ${chatResult.error}` });
+    }
+    
+    res.json({ success: true, botInfo: tokenResult.botInfo, message: 'Bot token va Chat ID muvaffaqiyatli tasdiqlandi.' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/settings', async (req, res) => {
   try {
     const { 
@@ -666,7 +804,9 @@ app.post('/api/settings', async (req, res) => {
       penaltyRate, legalNoticeDays, visitCount,
       deliveryStartHour, deliveryEndHour, deliverySlotLabel,
       maxRentalDays, minRentalDays,
-      myIdEnabled, myIdClientId, myIdClientSecret
+      myIdEnabled, myIdClientId, myIdClientSecret,
+      botToken,
+      companyName
     } = req.body;
 
     const settings = await prisma.siteSettings.upsert({
@@ -677,8 +817,9 @@ app.post('/api/settings', async (req, res) => {
         phone,
         email,
         address,
-        // Telegram credentials are read only from server environment variables.
+        ...(companyName !== undefined ? { companyName } : {}),
         ...(botChatId !== undefined ? { botChatId } : {}),
+        ...(botToken !== undefined ? { botToken: botToken.trim() } : {}),
         ...(penaltyRate !== undefined ? { penaltyRate: Number(penaltyRate) } : {}),
         ...(legalNoticeDays !== undefined ? { legalNoticeDays: Number(legalNoticeDays) } : {}),
         ...(visitCount !== undefined ? { visitCount: Number(visitCount) } : {}),
@@ -693,12 +834,14 @@ app.post('/api/settings', async (req, res) => {
       },
       create: {
         id: 'default',
-        telegram: telegram || 'https://t.me/meco_solar_uz',
-        instagram: instagram || 'https://instagram.com/meco.uzbekistan',
+        companyName: companyName || 'VOLTMAXHUB',
+        telegram: telegram || 'https://t.me/voltmaxhub_uz',
+        instagram: instagram || 'https://instagram.com/voltmaxhub',
         phone: phone || '+998 71 200 50 50',
-        email: email || 'info@meco.uz',
+        email: email || 'info@voltmaxhub.uz',
         address: address || 'Toshkent sh., Chilonzor t., 10-mavze 4-uy',
         botChatId: botChatId || '',
+        botToken: botToken || '',
         penaltyRate: penaltyRate ? Number(penaltyRate) : 0.5,
         legalNoticeDays: legalNoticeDays ? Number(legalNoticeDays) : 3,
         visitCount: visitCount !== undefined ? Number(visitCount) : 1420,
@@ -736,8 +879,8 @@ app.post('/api/settings/admin-credentials', async (req, res) => {
       adminUser = await prisma.user.create({
         data: {
           phone: newLogin || 'admin',
-          password: newPassword || 'admin123',
-          fullName: 'MECO Administrator',
+          password: newPassword || ADMIN_PASSWORD,
+          fullName: 'VOLTMAXHUB Administrator',
           role: 'ADMIN',
           isVerified: true
         }
@@ -934,7 +1077,8 @@ app.post('/api/checkout/click', async (req, res) => {
   const { orderId, amount } = req.body;
   const merchantId = process.env.CLICK_MERCHANT_ID || '12345';
   const serviceId = process.env.CLICK_SERVICE_ID || '67890';
-  const returnUrl = encodeURIComponent('http://localhost:5173/payment/success');
+  const frontendOrigin = FRONTEND_ORIGIN ? FRONTEND_ORIGIN.split(',')[0].trim() : 'https://voltmaxhub.uz';
+  const returnUrl = encodeURIComponent(`${frontendOrigin}/payment/success`);
   
   const clickCheckoutUrl = `https://my.click.uz/services/pay?service_id=${serviceId}&merchant_id=${merchantId}&amount=${amount}&transaction_param=${orderId}&return_url=${returnUrl}`;
 
@@ -968,6 +1112,11 @@ app.get('/api/legal/davo-arizasi/:orderId', async (req, res) => {
       return res.status(404).send('Buyurtma topilmadi.');
     }
 
+    const settings = await prisma.siteSettings.findUnique({ where: { id: 'default' } });
+    const companyName = settings?.companyName || 'VOLTMAXHUB';
+    const companyAddress = settings?.address || 'Toshkent sh., Chilonzor t., 10-mavze 4-uy';
+    const companyPhone = settings?.phone || '+998 71 200 50 50';
+
     const todayStr = new Date().toLocaleDateString('uz-UZ');
     const endDateStr = order.endDate ? new Date(order.endDate).toLocaleDateString('uz-UZ') : '—';
     const now = new Date();
@@ -983,7 +1132,7 @@ app.get('/api/legal/davo-arizasi/:orderId', async (req, res) => {
     <html lang="uz">
     <head>
       <meta charset="UTF-8">
-      <title>Da'vo Arizasi — MECO CRM Legal Engine</title>
+      <title>Da'vo Arizasi — ${companyName} CRM Legal Engine</title>
       <style>
         body { font-family: 'Times New Roman', Times, serif; font-size: 14pt; line-height: 1.5; margin: 40px; color: #000; }
         .header { text-align: right; margin-left: 50%; font-size: 12pt; margin-bottom: 30px; }
@@ -1000,14 +1149,14 @@ app.get('/api/legal/davo-arizasi/:orderId', async (req, res) => {
     </head>
     <body>
       <div class="no-print" style="margin-bottom: 20px; background: #0070f3; color: white; padding: 12px; border-radius: 6px; text-align: center;">
-        <strong>MECO LEGAL AUTO-PDF ENGINE:</strong> Ushbu hujjat rasmiy sud arizasi (Da'vo arizasi) hisoblanadi. Chop etish uchun Ctrl+P / Cmd+P bosing.
+        <strong>${companyName} LEGAL AUTO-PDF ENGINE:</strong> Ushbu hujjat rasmiy sud arizasi (Da'vo arizasi) hisoblanadi. Chop etish uchun Ctrl+P / Cmd+P bosing.
       </div>
 
       <div class="header">
         <strong>Fuqarolik ishlari bo'yicha Toshkent shahar Sudiga</strong><br>
-        <strong>Da'vogar:</strong> "MECO SOLAR POWER" MChJ<br>
-        Manzil: Toshkent sh., Chilonzor t., 10-mavze 4-uy<br>
-        Tel: +998 71 200-00-00<br><br>
+        <strong>Da'vogar:</strong> "${companyName}" MChJ<br>
+        Manzil: ${companyAddress}<br>
+        Tel: ${companyPhone}<br><br>
         <strong>Javobgar:</strong> ${order.user.fullName || 'Alisher Qayumov'}<br>
         Pasport: ${order.user.passportSeries || 'AA1234567'}, PINFL: ${order.user.pinfl || '31204958390124'}<br>
         Telefon: ${order.user.phone}<br>
@@ -1018,7 +1167,7 @@ app.get('/api/legal/davo-arizasi/:orderId', async (req, res) => {
       <div class="subtitle">(Mol-mulkni qaytarish va ijara qarzdorligini hamda penyani undirish to'g'risida)</div>
 
       <p class="content">
-        Da'vogar "MECO SOLAR POWER" MChJ va Javobgar <strong>${order.user.fullName || 'Alisher Qayumov'}</strong> o'rtasida 
+        Da'vogar "${companyName}" MChJ va Javobgar <strong>${order.user.fullName || 'Alisher Qayumov'}</strong> o'rtasida 
         elektron ommaviy oferta shartnomasi bilan <strong>${order.product.title}</strong> (sig'imi: ${order.product.capacity}) 
         uskunasini vaqtincha ijaraga berish bo'yicha shartnoma tuzilgan.
       </p>
@@ -1043,7 +1192,7 @@ app.get('/api/legal/davo-arizasi/:orderId', async (req, res) => {
       <div class="title" style="font-size: 13pt; text-align: left;">YUQORIDAGILARDAN KELIB CHIQIB, SO'RAYMAN:</div>
 
       <ol style="margin-left: 20px; line-height: 1.8;">
-        <li>Javobgar <strong>${order.user.fullName || 'Alisher Qayumov'}</strong>dan "MECO SOLAR POWER" MChJ foydasiga <strong>${order.product.title}</strong> uskunasi natursida (asl holatda) majburiy tartibda olib berilsin.</li>
+        <li>Javobgar <strong>${order.user.fullName || 'Alisher Qayumov'}</strong>dan "${companyName}" MChJ foydasiga <strong>${order.product.title}</strong> uskunasi natursida (asl holatda) majburiy tartibda olib berilsin.</li>
         <li>Javobgardan Da'vogar foydasiga <strong>${totalClaimAmount.toLocaleString()} UZS</strong> miqdoridagi ijara qarzi va penya undirilsin.</li>
         <li>Sud xarajatlari va davlat boji Javobgar zimmasiga yuklatilsin.</li>
       </ol>
@@ -1060,7 +1209,7 @@ app.get('/api/legal/davo-arizasi/:orderId', async (req, res) => {
           Sana: <strong>${todayStr}</strong>
         </div>
         <div>
-          <strong>"MECO SOLAR POWER" MChJ Direktori:</strong> _______________ (Imzo)
+          <strong>"VOLTMAXHUB" MChJ Direktori:</strong> _______________ (Imzo)
         </div>
       </div>
     </body>
@@ -1080,6 +1229,9 @@ app.post('/api/legal/send-telegram', async (req, res) => {
     const { orderId, chatId } = req.body;
     const activeToken = process.env.TELEGRAM_BOT_TOKEN || '';
     const adminChatId = process.env.TELEGRAM_CHAT_ID || '';
+
+    const settings = await prisma.siteSettings.findUnique({ where: { id: 'default' } });
+    const companyName = settings?.companyName || 'VOLTMAXHUB';
 
     let messageText = '';
     if (orderId) {
@@ -1102,11 +1254,11 @@ app.post('/api/legal/send-telegram', async (req, res) => {
         messageText = `⚖️ *RASMIY DA'VO ARIZASI (SUD ARIZASI)*\n` +
           `----------------------------------------\n` +
           `🏛 *Sud:* Fuqarolik ishlari bo'yicha Toshkent shahar sudi\n` +
-          `🏢 *Da'vogar:* "MECO SOLAR POWER" MChJ\n` +
+          `🏢 *Da'vogar:* "${companyName}" MChJ\n` +
           `👤 *Javobgar:* ${order.user?.fullName || 'Mijoz'}\n` +
           `📞 *Tel:* ${order.user?.phone || '—'}\n` +
           `🪪 *Pasport:* ${order.user?.passportSeries || '—'}, PINFL: ${order.user?.pinfl || '—'}\n\n` +
-          `📦 *Uskuna:* ${order.product?.title || 'Meco Generator'} (${order.product?.capacity || ''})\n` +
+          `📦 *Uskuna:* ${order.product?.title || '${companyName} Generator'} (${order.product?.capacity || ''})\n` +
           `📅 *Shartnoma muddati tugagan sana:* ${endDateStr} (${daysOverdue} kun o'tgan)\n\n` +
           `💰 *UNDIRILADIGAN SUMMA:* \n` +
           `• Asosiy qarz: ${baseAmount.toLocaleString()} UZS\n` +
@@ -1140,7 +1292,10 @@ app.post('/api/legal/send-telegram', async (req, res) => {
       renderer.on('error', reject);
       renderer.on('close', code => code === 0 ? resolve(Buffer.concat(chunks)) : reject(new Error(`PDF yaratilmadi: ${renderError.slice(-500)}`)));
       const safe = value => String(value || '—').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
-      renderer.stdin.end(`<html><head><meta charset="utf-8"><style>body{font-family:serif;font-size:14pt;line-height:1.5;margin:36px}.title{text-align:center;font-weight:bold;font-size:18pt;margin:24px}li{margin:12px 0}</style></head><body><h2 style="text-align:right">MECO SOLAR POWER MChJ<br>Da’vogar</h2><div class="title">DA’VO ARIZASI</div><p>Fuqarolik ishlari bo‘yicha sudga</p><p>Javobgar: <b>${safe(order.user?.fullName)}</b><br>Telefon: ${safe(order.user?.phone)}<br>Manzil: ${safe(order.user?.address)}</p><p>Buyurtma: #${safe(order.id)}<br>Mahsulot: ${safe(order.product?.title)}<br>Ijara muddati: ${order.endDate ? new Date(order.endDate).toLocaleDateString('uz-UZ') : '—'}</p><p>Ijara muddati tugaganidan so‘ng mahsulot qaytarilmaganligi sababli, uni qaytarish va shartnoma bo‘yicha hisob-kitobni amalga oshirish so‘raladi.</p><p>Ilovalar: ijara shartnomasi va buyurtma ma’lumotlari.</p><p style="margin-top:60px">Sana: ${new Date().toLocaleDateString('uz-UZ')} <span style="float:right">Imzo: ______________</span></p></body></html>`);
+      const companyNameSafe = safe(companyName);
+      const companyAddressSafe = safe(settings?.address || 'Toshkent sh., Chilonzor t., 10-mavze 4-uy');
+      const companyPhoneSafe = safe(settings?.phone || '+998 71 200 50 50');
+      renderer.stdin.end(`<html><head><meta charset="utf-8"><style>body{font-family:serif;font-size:14pt;line-height:1.5;margin:36px}.title{text-align:center;font-weight:bold;font-size:18pt;margin:24px}li{margin:12px 0}</style></head><body><h2 style="text-align:right">${companyNameSafe} MChJ<br>Da’vogar</h2><div class="title">DA’VO ARIZASI</div><p>Fuqarolik ishlari bo‘yicha sudga</p><p>Javobgar: <b>${safe(order.user?.fullName)}</b><br>Telefon: ${safe(order.user?.phone)}<br>Manzil: ${safe(order.user?.address)}</p><p>Buyurtma: #${safe(order.id)}<br>Mahsulot: ${safe(order.product?.title)}<br>Ijara muddati: ${order.endDate ? new Date(order.endDate).toLocaleDateString('uz-UZ') : '—'}</p><p>Ijara muddati tugaganidan so‘ng mahsulot qaytarilmaganligi sababli, uni qaytarish va shartnoma bo‘yicha hisob-kitobni amalga oshirish so‘raladi.</p><p>Ilovalar: ijara shartnomasi va buyurtma ma’lumotlari.</p><p style="margin-top:60px">Sana: ${new Date().toLocaleDateString('uz-UZ')} <span style="float:right">Imzo: ______________</span></p></body></html>`);
     });
     const form = new FormData();
     form.append('chat_id', String(chatId || ''));
@@ -1215,11 +1370,11 @@ app.post('/api/telegram/webhook', async (req, res) => {
       where: { type: 'RENT', endDate: { lt: new Date(Date.now() - 3 * 86400000) }, status: { notIn: ['COMPLETED', 'CANCELLED'] } },
       include: { user: true, product: true }, orderBy: { endDate: 'asc' }
     });
-    await sendMessage(chatId, `🤖 MECO bot ishga ulandi. Jami mijoz: ${customers.length}. 3 kundan oshgan ijara: ${rentals.length} ta.`);
+    await sendMessage(chatId, `🤖 VOLTMAXHUB bot ishga ulandi. Jami mijoz: ${customers.length}. 3 kundan oshgan ijara: ${rentals.length} ta.`);
     const adminChatId = process.env.TELEGRAM_CHAT_ID || '';
     if (adminChatId && String(chatId) === String(adminChatId)) {
       const lines = customers.slice(0, 35).map((customer, index) => `${index + 1}. ${customer.fullName || 'Mijoz'} — ${customer.phone}`);
-      await sendMessage(adminChatId, `📊 MECO mijozlar hisoboti\nJami mijoz: ${customers.length}\n3 kundan oshgan ijara: ${rentals.length}\n\n${lines.join('\n') || 'Hozircha mijoz yo‘q.'}`);
+      await sendMessage(adminChatId, `📊 VOLTMAXHUB mijozlar hisoboti\nJami mijoz: ${customers.length}\n3 kundan oshgan ijara: ${rentals.length}\n\n${lines.join('\n') || 'Hozircha mijoz yo‘q.'}`);
       for (const order of rentals) await sendMessage(adminChatId, `⚠️ ${order.user?.fullName || 'Mijoz'} (${order.user?.phone || 'telefon yo‘q'}) — ${order.product?.title || 'Ijara'}, muddati ${Math.floor((Date.now() - new Date(order.endDate)) / 86400000)} kun o‘tgan. Buyurtma: ${order.id}.`);
     }
   } catch (error) {
@@ -1258,7 +1413,7 @@ async function startTelegramPolling() {
         }
         const adminChatId = process.env.TELEGRAM_CHAT_ID || '';
         if (!adminChatId || String(chatId) !== String(adminChatId)) {
-          await sendMessage(`MECO bot ishlayapti ✅\nSizning Telegram chat ID: ${chatId}\nAdmin hisoboti va 3 kundan oshgan ijara ma’lumotlari uchun shu ID ni TELEGRAM_CHAT_ID ga sozlang.`);
+          await sendMessage(`VOLTMAXHUB bot ishlayapti ✅\nSizning Telegram chat ID: ${chatId}\nAdmin hisoboti va 3 kundan oshgan ijara ma’lumotlari uchun shu ID ni TELEGRAM_CHAT_ID ga sozlang.`);
           continue;
         }
         const customers = await prisma.user.findMany({ where: { role: 'CLIENT' }, orderBy: { createdAt: 'desc' } });
@@ -1267,7 +1422,7 @@ async function startTelegramPolling() {
           include: { user: true, product: true }, orderBy: { endDate: 'asc' }
         });
         const customerLines = customers.slice(0, 35).map((customer, index) => `${index + 1}. ${customer.fullName || 'Mijoz'} — ${customer.phone}`);
-        await sendMessage(`📊 MECO mijozlar hisoboti\nJami mijoz: ${customers.length}\n3 kundan oshgan ijara: ${overdue.length}\n\n${customerLines.join('\n') || 'Hozircha mijoz yo‘q.'}`);
+        await sendMessage(`📊 VOLTMAXHUB mijozlar hisoboti\nJami mijoz: ${customers.length}\n3 kundan oshgan ijara: ${overdue.length}\n\n${customerLines.join('\n') || 'Hozircha mijoz yo‘q.'}`);
         for (const order of overdue) {
           await sendMessage(`⚠️ ${order.user?.fullName || 'Mijoz'} (${order.user?.phone || 'telefon yo‘q'}) — ${order.product?.title || 'Ijara'}, muddati ${Math.floor((Date.now() - new Date(order.endDate)) / 86400000)} kun o‘tgan. Buyurtma: ${order.id}.`);
         }
@@ -1281,6 +1436,6 @@ async function startTelegramPolling() {
 
 
 app.listen(PORT, () => {
-  console.log(`MECO Backend API Server running on http://localhost:${PORT}`);
+  console.log(`VOLTMAXHUB Backend API Server running on http://localhost:${PORT}`);
   startTelegramPolling();
 });

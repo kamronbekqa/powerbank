@@ -45,9 +45,9 @@ export default function AdminLoginPage({ onLoginSuccess, onGoBack, lang = 'UZ', 
   };
 
   const label = {
-    UZ: { title: 'Admin Paneliga Kirish', subtitle: 'Meco Solar CRM boshqaruv tizimi', loginLbl: 'Admin Login', passLbl: 'Admin Paroli', loginBtn: 'Tizimga Kirish', goBack: '← Asosiy sahifaga qaytish' },
-    RU: { title: 'Вход в Панель Администратора', subtitle: 'Система управления Meco Solar CRM', loginLbl: 'Логин Админа', passLbl: 'Пароль Админа', loginBtn: 'Войти', goBack: '← Вернуться на главную' },
-    EN: { title: 'Admin Panel Login', subtitle: 'Meco Solar CRM Management System', loginLbl: 'Admin Login', passLbl: 'Admin Password', loginBtn: 'Log In', goBack: '← Back to Homepage' }
+    UZ: { title: 'Admin Paneliga Kirish', subtitle: 'VOLTMAXHUB Solar CRM boshqaruv tizimi', loginLbl: 'Admin Login', passLbl: 'Admin Paroli', loginBtn: 'Tizimga Kirish', goBack: '← Asosiy sahifaga qaytish' },
+    RU: { title: 'Вход в Панель Администратора', subtitle: 'Система управления VOLTMAXHUB Solar CRM', loginLbl: 'Логин Админа', passLbl: 'Пароль Админа', loginBtn: 'Войти', goBack: '← Вернуться на главную' },
+    EN: { title: 'Admin Panel Login', subtitle: 'VOLTMAXHUB Solar CRM Management System', loginLbl: 'Admin Login', passLbl: 'Admin Password', loginBtn: 'Log In', goBack: '← Back to Homepage' }
   }[lang] || label?.UZ;
 
   return (
@@ -81,7 +81,7 @@ export default function AdminLoginPage({ onLoginSuccess, onGoBack, lang = 'UZ', 
             </div>
             <div>
               <div style={{ color: '#fff', fontWeight: '800', fontSize: '1.1rem' }}>{label.title}</div>
-              <div style={{ color: '#60a5fa', fontSize: '0.78rem', fontWeight: '700', letterSpacing: '1px' }}>MECO SOLAR CRM</div>
+              <div style={{ color: '#60a5fa', fontSize: '0.78rem', fontWeight: '700', letterSpacing: '1px' }}>VOLTMAXHUB CRM</div>
             </div>
           </div>
 
