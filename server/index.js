@@ -58,50 +58,78 @@ let telegramPollingStarted = false;
 // check the first query fails with a raw Prisma error such as
 // "The table `main.Product` does not exist" instead of telling the operator
 // what to do.
+/**
+ * Make the service self-healing: if the database is reachable but the schema is
+ * missing (a fresh PostgreSQL instance, or a deploy whose start command skips
+ * migrations), apply the committed migrations automatically and carry on.
+ * This means the app works no matter how the host launches it.
+ */
+async function runMigrations() {
+  const { spawn } = await import('node:child_process');
+  return new Promise((resolve) => {
+    const child = spawn('npx', ['prisma', 'migrate', 'deploy'], {
+      stdio: 'inherit',
+      env: process.env,
+      shell: false
+    });
+    child.on('error', () => resolve(false));
+    child.on('close', code => resolve(code === 0));
+  });
+}
+
 async function assertSchemaReady() {
   if (process.env.SKIP_SCHEMA_CHECK === '1') return;
   const isPostgres = (process.env.DATABASE_URL || '').startsWith('postgres');
-  try {
-    await prisma.$queryRawUnsafe('SELECT 1 FROM "Product" LIMIT 1');
-    return;
-  } catch (error) {
-    // Distinguish "cannot reach the database" from "reachable but empty", which
-    // need completely different fixes.
-    let reachable = false;
-    try { await prisma.$queryRawUnsafe('SELECT 1'); reachable = true; } catch { reachable = false; }
 
+  const hasSchema = async () => {
+    try { await prisma.$queryRawUnsafe('SELECT 1 FROM "Product" LIMIT 1'); return true; }
+    catch { return false; }
+  };
+
+  if (await hasSchema()) return;
+
+  // Distinguish "cannot reach the database" from "no schema yet".
+  let reachable = false;
+  try { await prisma.$queryRawUnsafe('SELECT 1'); reachable = true; } catch { reachable = false; }
+
+  if (!reachable) {
     console.error('');
-    if (!reachable) {
-      console.error('  [DB] Cannot reach the database.');
-      console.error('');
-      if (isPostgres) {
-        console.error('  PostgreSQL is configured but not answering. Check, in order:');
-        console.error('    1. Is the server running?      npm run db:local:status');
-        console.error('    2. Wrong host/port/password?   compare .env with your provider');
-        console.error('    3. Firewall / not reachable?   try:  psql "$DATABASE_URL" -c "SELECT 1"');
-        console.error('');
-        console.error('  For local work:  npm run db:local:start   (starts your local cluster)');
-      } else {
-        console.error('  SQLite is configured but the file is missing or unreadable.');
-        console.error('    Check DATABASE_URL in .env (expected: file:./dev.db)');
-      }
-      console.error('  Raw error: ' + String(error.message).split('\n')[0]);
-      console.error('');
-      process.exit(1);
+    console.error('  [DB] Cannot reach the database.');
+    console.error('');
+    if (isPostgres) {
+      console.error('  PostgreSQL is configured but not answering:');
+      console.error('    1. Is it running?   npm run db:local:status   (local)');
+      console.error('    2. Wrong host/port/password in DATABASE_URL?');
+      console.error('    3. Firewall / network?  test: psql "$DATABASE_URL" -c "SELECT 1"');
+    } else {
+      console.error('  SQLite is configured but the file is missing or unreadable.');
+      console.error('    Check DATABASE_URL in .env (expected: file:./dev.db)');
     }
-
-    console.error('  [DB] The database is reachable but the schema is missing.');
-    console.error('');
-    console.error('  The server connected fine, but the tables have not been created.');
-    console.error('  Apply the migrations:');
-    console.error('');
-    console.error('    npm run db:setup');
-    console.error('');
-    console.error('  (runs `prisma generate` + `prisma migrate deploy`)');
-    console.error('  Check what it thinks it has applied with:  npm run db:status');
     console.error('');
     process.exit(1);
   }
+
+  // Reachable but empty -> a fresh database. Apply migrations, then re-check.
+  console.log('');
+  console.log('  [DB] Database is reachable but has no schema yet.');
+  console.log('  [DB] Applying migrations (prisma migrate deploy)...');
+  const applied = await runMigrations();
+  if (applied && await hasSchema()) {
+    console.log('  [DB] Migrations applied successfully.');
+    console.log('');
+    return;
+  }
+
+  console.error('');
+  console.error('  [DB] Could not apply migrations automatically.');
+  console.error('');
+  console.error('  Run this in the service shell / build step:');
+  console.error('    npx prisma migrate deploy');
+  console.error('');
+  console.error('  Or set the service Start Command to:');
+  console.error('    prisma migrate deploy && node server/index.js');
+  console.error('');
+  process.exit(1);
 }
 
 // ── TELEGRAM DYNAMIC CREDENTIALS & RETRY DISPATCH HELPER ─────────────────────
