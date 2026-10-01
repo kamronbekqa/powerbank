@@ -1410,6 +1410,16 @@ app.delete('/api/users/:id', requireAdmin, async (req, res) => {
     if (target.role === 'ADMIN') {
       return res.status(400).json({ error: "Admin akkauntini o'chirish mumkin emas." });
     }
+    // Remove dependants first: SQLite allowed orphaned rows, PostgreSQL
+    // enforces the foreign keys, so deleting the user alone would fail.
+    await prisma.$transaction([
+      prisma.cartItem.deleteMany({ where: { userId: id } }),
+      prisma.wishlistItem.deleteMany({ where: { userId: id } }),
+      prisma.verification.deleteMany({ where: { userId: id } }),
+      prisma.review.deleteMany({ where: { userId: id } }),
+      prisma.transaction.deleteMany({ where: { userId: id } }),
+      prisma.order.deleteMany({ where: { userId: id } })
+    ]);
     await prisma.user.delete({ where: { id } });
     res.json({ success: true });
   } catch (error) {
