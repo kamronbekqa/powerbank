@@ -24,25 +24,42 @@ const ROOT = path.resolve(__dirname, '..');
 const SQLITE_PATH = path.join(ROOT, 'prisma', 'dev.db');
 const DRY_RUN = process.argv.includes('--dry-run');
 
+// TARGET comes from DATABASE_URL (e.g. the production PostgreSQL instance).
+// SOURCE is read explicitly so the two are never confused.
 const prisma = new PrismaClient();
+const SOURCE_URL = process.env.SOURCE_DATABASE_URL
+  || 'postgresql://postgres:voltmaxhub_local_dev@127.0.0.1:55432/postgres?schema=public';
+function openSource() {
+  return new PrismaClient({ datasources: { db: { url: SOURCE_URL } } });
+}
 
 // node:sqlite is CJS-only, so reach it through createRequire.
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 
 async function main() {
-  if (!fs.existsSync(SQLITE_PATH)) {
-    console.error(`SQLite source not found: ${SQLITE_PATH}`);
-    process.exit(1);
+  // The legacy SQLite file is the default source. If it has been removed, fall
+  // back to the current local database, which already holds the same data.
+  let products, settings, admins, source;
+  if (fs.existsSync(SQLITE_PATH)) {
+    const { DatabaseSync } = require('node:sqlite');
+    const db = new DatabaseSync(SQLITE_PATH, { readOnly: true });
+    products = db.prepare('SELECT * FROM Product').all();
+    settings = db.prepare("SELECT * FROM SiteSettings WHERE id='default'").get();
+    admins = db.prepare("SELECT * FROM User WHERE role='ADMIN'").all();
+    source = SQLITE_PATH;
+    db.close();
+  } else {
+    const src = openSource();
+    products = await src.product.findMany();
+    settings = await src.siteSettings.findFirst({ where: { id: 'default' } });
+    admins = await src.user.findMany({ where: { role: 'ADMIN' } });
+    source = 'SOURCE_DATABASE_URL (SQLite file absent)';
+    await src.$disconnect();
   }
-  const { DatabaseSync } = require('node:sqlite');
-  const db = new DatabaseSync(SQLITE_PATH, { readOnly: true });
 
-  const products = db.prepare('SELECT * FROM Product').all();
-  const settings = db.prepare("SELECT * FROM SiteSettings WHERE id='default'").get();
-  const admins = db.prepare("SELECT * FROM User WHERE role='ADMIN'").all();
-
-  console.log(`SQLite source : ${SQLITE_PATH}`);
+  console.log(`Source       : ${source}`);
+  console.log(`Target       : ${(process.env.DATABASE_URL || '').replace(/\/\/[^@]*@/, '//***@')}`);
   console.log(`Mode          : ${DRY_RUN ? 'DRY RUN (no writes)' : 'APPLY'}`);
   console.log('');
   console.log('Will copy:');
@@ -143,8 +160,6 @@ async function main() {
     adminCount++;
   }
   console.log(`Admins      : ${adminCount} copied (password hash preserved)`);
-
-  db.close();
 
   const counts = {
     products: await prisma.product.count(),
