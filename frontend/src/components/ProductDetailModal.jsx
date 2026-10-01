@@ -156,7 +156,7 @@ export default function ProductDetailModal({ product: rawProduct, onClose, onBoo
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--meco-border)', paddingBottom: '0.75rem' }}>
           <div>
             <h2 style={{ fontSize: '1.3rem', fontWeight: '800', color: 'var(--meco-text-main)' }}>{product.title}</h2>
-            <span style={{ fontSize: '0.85rem', color: 'var(--meco-text-muted)' }}>Sig'imi: {product.capacity || 'Solar Generator'}</span>
+            <span style={{ fontSize: '0.85rem', color: 'var(--meco-text-muted)' }}>Sig'imi: {product.capacity || 'Generator'}</span>
           </div>
           <button className="btn btn-sm btn-secondary" onClick={onClose}><X size={18} /></button>
         </div>

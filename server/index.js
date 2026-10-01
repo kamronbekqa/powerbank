@@ -5,6 +5,18 @@ import { PrismaClient } from '@prisma/client';
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
 import cookieParser from 'cookie-parser';
+import crypto from 'node:crypto';
+import {
+  hashPassword, verifyPassword, isHashed, publicUser,
+  requireAuth, requireAdmin,
+  csrfProtection, issueCsrfToken, rateLimit, securityHeaders,
+  v, ValidationError, errorHandler
+} from './lib/security.js';
+import {
+  KycCryptoError,
+  encryptField, encryptUserPII, encryptVerificationPII,
+  decryptField, decryptRecordPII, decryptRecordsPII, isKeyConfigured
+} from './lib/kyc-crypto.js';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
@@ -94,13 +106,40 @@ async function sendTelegramNotification({ text, documentBuffer, filename, captio
   }
 }
 
+// ── CORS: explicit allow-list, never wildcard with credentials ──────────────
+const ALLOWED_ORIGINS = FRONTEND_ORIGIN
+  ? FRONTEND_ORIGIN.split(',').map(s => s.trim()).filter(Boolean)
+  : ['http://localhost:5173', 'http://127.0.0.1:5173'];
+
 app.use(cors({
-  origin: FRONTEND_ORIGIN ? FRONTEND_ORIGIN.split(',').map(s => s.trim()) : true,
-  credentials: true
+  origin(origin, cb) {
+    // Same-origin / server-to-server requests have no Origin header.
+    if (!origin) return cb(null, true);
+    if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    // Refuse the origin instead of throwing: the request still reaches the route
+    // but the browser gets no CORS headers, and no 500/error-log noise is produced.
+    return cb(null, false);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-csrf-token'],
+  maxAge: 600
 }));
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+app.use(securityHeaders);
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use(cookieParser());
+
+// Issue a CSRF token cookie so the SPA can echo it in x-csrf-token.
+app.use((req, res, next) => {
+  if (!req.cookies?.csrf_token) issueCsrfToken(res);
+  next();
+});
+app.use(csrfProtection);
+
+// Broad, DoS-safe ceiling for the whole API.
+app.use('/api', rateLimit({ windowMs: 60_000, max: 300 }));
 
 app.get('/api/health', async (_req, res) => {
   try {
@@ -172,71 +211,98 @@ async function checkOverdueRentals() {
 checkOverdueRentals();
 
 // ── AUTHENTICATION API ──────────────────────────────────────────────────────
-app.post('/api/auth/login', async (req, res) => {
+// Per-account + per-IP throttling. Fails are counted; successes are not.
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  skipSuccessful: true,
+  keyFn: req => {
+    const id = String(req.body?.phone || req.body?.login || 'anon').toLowerCase().slice(0, 40);
+    const fwd = req.headers['x-forwarded-for'];
+    const ip = typeof fwd === 'string' ? fwd.split(',')[0].trim() : req.ip;
+    return `${id}|${ip}`;
+  },
+  message: 'Login urinishlari limitdan oshdi. 15 daqiqa kutib turing.'
+});
+
+app.post('/api/auth/login', loginLimiter, async (req, res) => {
   try {
     const { phone, login, password } = req.body;
-    const userPhone = phone || login;
+    const userPhone = v.str(phone || login, 'Login', { min: 2, max: 60 });
     if (!userPhone) {
       return res.status(400).json({ error: 'Telefon raqami yoki loginni kiriting.' });
     }
 
     let user = await prisma.user.findUnique({ where: { phone: userPhone } });
-    if (!user && (userPhone === 'admin' || userPhone.includes('9990011'))) {
+
+    // Only bootstrap an admin when explicitly configured via env.
+    if (!user && process.env.ADMIN_LOGIN && userPhone === process.env.ADMIN_LOGIN) {
+      const initialPassword = v.str(process.env.ADMIN_PASSWORD, 'ADMIN_PASSWORD', { min: 8, max: 200 });
       user = await prisma.user.create({
         data: {
           phone: userPhone,
-          password: password || ADMIN_PASSWORD,
-          fullName: 'Bosh Administrator',
-          role: 'ADMIN'
+          password: await hashPassword(initialPassword),
+          fullName: 'VOLTMAXHUB Administrator',
+          role: 'ADMIN',
+          isVerified: true
         }
       });
-    } else if (!user) {
-      user = await prisma.user.create({
-        data: {
-          phone: userPhone,
-          password: password || '123456',
-          fullName: 'Mijoz ' + userPhone.slice(-4),
-          role: userPhone.includes('9990011') || userPhone.includes('admin') ? 'ADMIN' : 'CLIENT'
-        }
+    }
+
+    // Unknown account: do not reveal whether it exists.
+    if (!user) {
+      return res.status(401).json({ error: 'Login yoki parol noto\'g\'ri.' });
+    }
+
+    const submitted = v.str(password, 'Parol', { min: 1, max: 200, required: false });
+    const ok = await verifyPassword(submitted, user.password);
+    if (!ok) {
+      return res.status(401).json({ error: 'Login yoki parol noto\'g\'ri.' });
+    }
+
+    // Lazy migration: upgrade legacy plaintext hashes after a successful login.
+    if (!isHashed(user.password)) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { password: await hashPassword(submitted) }
       });
-    } else if (password && user.password && user.password !== password) {
-      return res.status(400).json({ error: 'Parol noto\'g\'ri kiritildi.' });
     }
 
     setAuthCookie(res, user);
-    res.json({ success: true, user });
+    res.json({ success: true, user: publicUser(user) });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    if (error instanceof ValidationError) return res.status(400).json({ error: error.message });
+    res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', rateLimit({ windowMs: 60 * 60 * 1000, max: 10 }), async (req, res) => {
   try {
-    const { phone, password, fullName } = req.body;
-    if (!phone || !fullName) {
-      return res.status(400).json({ error: 'Telefon raqami va F.I.SH to\'ldirilishi shart.' });
-    }
+    const phone = v.phone(req.body?.phone, 'Telefon raqami');
+    const fullName = v.str(req.body?.fullName, 'F.I.SH', { min: 3, max: 120 });
+    const password = v.str(req.body?.password, 'Parol', { min: 6, max: 200 });
 
     const existing = await prisma.user.findUnique({ where: { phone } });
     if (existing) {
-      return res.status(400).json({ error: 'Bu telefon raqami allaqachon ro\'yxatdan o\'tgan.' });
+      return res.status(409).json({ error: 'Bu telefon raqami allaqachon ro\'yxatdan o\'tgan.' });
     }
 
-    const assignedRole = (phone === 'admin' || phone === '+998909990011' || phone === '9990011') ? 'ADMIN' : 'CLIENT';
-
+    // Public registration can only ever create CLIENT accounts.
+    // Admin accounts are provisioned by the server or the admin panel only.
     const user = await prisma.user.create({
       data: {
         phone,
-        password: password || '123456',
+        password: await hashPassword(password),
         fullName,
-        role: assignedRole
+        role: 'CLIENT'
       }
     });
 
     setAuthCookie(res, user);
-    res.json({ success: true, user });
+    res.status(201).json({ success: true, user: publicUser(user) });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    if (error instanceof ValidationError) return res.status(400).json({ error: error.message });
+    res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
@@ -264,9 +330,9 @@ app.get('/api/auth/me', async (req, res) => {
     }
 
     setAuthCookie(res, user);
-    res.json({ success: true, user });
+    res.json({ success: true, user: publicUser(user) });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
@@ -276,23 +342,23 @@ app.post('/api/auth/logout', (req, res) => {
 });
 
 // Update User Profile (Avatar / Name) API
-app.patch('/api/users/profile', async (req, res) => {
+// Identity comes from the session cookie only — never from the request body (IDOR).
+app.patch('/api/users/profile', requireAuth, async (req, res) => {
   try {
-    const userId = req.user?.id || req.body.userId;
-    if (!userId) {
-      return res.status(401).json({ error: 'Avtorizatsiyadan o\'tilmagan' });
+    const userId = req.user.id;
+    const data = {};
+    if (req.body?.avatar !== undefined) {
+      const avatar = v.str(req.body.avatar, 'Avatar', { required: false, max: 3_000_000 });
+      data.avatar = avatar || null;
     }
-    const { avatar, fullName } = req.body;
-    const updated = await prisma.user.update({
-      where: { id: userId },
-      data: {
-        ...(avatar !== undefined ? { avatar } : {}),
-        ...(fullName !== undefined ? { fullName } : {})
-      }
-    });
-    res.json({ success: true, user: updated });
+    if (req.body?.fullName !== undefined) {
+      data.fullName = v.str(req.body.fullName, 'F.I.SH', { min: 2, max: 120 });
+    }
+    const updated = await prisma.user.update({ where: { id: userId }, data });
+    res.json({ success: true, user: publicUser(updated) });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    if (error instanceof ValidationError) return res.status(400).json({ error: error.message });
+    res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
@@ -410,11 +476,11 @@ app.get('/api/products', async (req, res) => {
     }));
     res.json(formatted);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[API ERROR]', error.message); res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
-app.post('/api/products', async (req, res) => {
+app.post('/api/products', requireAdmin, async (req, res) => {
   try {
     const { title, category, capacity, description, buyPrice, rentPrice, oldBuyPrice, oldRentPrice, stock, images, usageSpecs, isAvailable } = req.body;
     const product = await prisma.product.create({
@@ -435,11 +501,11 @@ app.post('/api/products', async (req, res) => {
     });
     res.json(product);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[API ERROR]', error.message); res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
-app.patch('/api/products/:id', async (req, res) => {
+app.patch('/api/products/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { title, category, capacity, description, buyPrice, rentPrice, oldBuyPrice, oldRentPrice, stock, images, usageSpecs, isAvailable } = req.body;
@@ -464,11 +530,11 @@ app.patch('/api/products/:id', async (req, res) => {
     });
     res.json(product);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[API ERROR]', error.message); res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
-app.delete('/api/products/:id', async (req, res) => {
+app.delete('/api/products/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -481,18 +547,24 @@ app.delete('/api/products/:id', async (req, res) => {
     });
     res.json({ success: true, message: 'Mahsulot muvaffaqiyatli o\'chirildi.' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[API ERROR]', error.message); res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
 // ── 2. ORDERS API ──────────────────────────────────────────────────────────
-app.get('/api/orders', async (req, res) => {
+const ORDER_USER_FIELDS = {
+        id: true, phone: true, fullName: true, role: true,
+        avatar: true, isVerified: true
+      };
+
+app.get('/api/orders', requireAuth, async (req, res) => {
   try {
+    // Scope server-side: an admin sees every order, a customer only their own.
+    // The client used to download all orders and filter locally, which handed
+    // every customer everyone else's orders.
     const orders = await prisma.order.findMany({
-      include: {
-        user: true,
-        product: true
-      },
+      where: req.user.role === 'ADMIN' ? {} : { userId: req.user.id },
+      include: { user: { select: ORDER_USER_FIELDS }, product: true },
       orderBy: { createdAt: 'desc' }
     });
     const formatted = orders.map(o => ({
@@ -505,7 +577,7 @@ app.get('/api/orders', async (req, res) => {
     }));
     res.json(formatted);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[API ERROR]', error.message); res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
@@ -542,9 +614,9 @@ app.post('/api/orders', async (req, res) => {
       user = await prisma.user.findUnique({ where: { phone } });
       if (!user) {
         user = await prisma.user.create({
-          data: {
+          data: encryptUserPII({
             phone,
-            password: '123456',
+            password: hashPassword(crypto.randomUUID()),
             fullName: fullName || 'Mijoz',
             passportSeries: passportSeries || null,
             pinfl: pinfl || null,
@@ -552,7 +624,7 @@ app.post('/api/orders', async (req, res) => {
             passportBack: passportBack || null,
             selfieUrl: selfieUrl || null,
             isVerified: false
-          }
+          })
         });
       }
     }
@@ -563,7 +635,7 @@ app.post('/api/orders', async (req, res) => {
 
     if (type === 'RENT' && (passportSeries || pinfl)) {
       await prisma.verification.create({
-        data: {
+        data: encryptVerificationPII({
           userId: user.id,
           passportSeries: passportSeries || 'AA0000000',
           pinfl: pinfl || '00000000000000',
@@ -571,17 +643,17 @@ app.post('/api/orders', async (req, res) => {
           passportBack: passportBack || null,
           selfieUrl: selfieUrl || null,
           status: 'PENDING'
-        }
+        })
       });
       await prisma.user.update({
         where: { id: user.id },
-        data: {
+        data: encryptUserPII({
           fullName: fullName || user.fullName,
-          passportSeries: passportSeries || user.passportSeries,
-          pinfl: pinfl || user.pinfl,
-          passportFront: passportFront || user.passportFront,
-          selfieUrl: selfieUrl || user.selfieUrl
-        }
+          passportSeries: passportSeries || decryptField(user.passportSeries),
+          pinfl: pinfl || decryptField(user.pinfl),
+          passportFront: passportFront || decryptField(user.passportFront),
+          selfieUrl: selfieUrl || decryptField(user.selfieUrl)
+        })
       });
     }
 
@@ -597,7 +669,7 @@ app.post('/api/orders', async (req, res) => {
       },
       include: {
         product: true,
-        user: true
+        user: { select: ORDER_USER_FIELDS }
       }
     });
 
@@ -614,11 +686,11 @@ app.post('/api/orders', async (req, res) => {
 
     res.json(order);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[API ERROR]', error.message); res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
-app.patch('/api/orders/:id/status', async (req, res) => {
+app.patch('/api/orders/:id/status', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -629,7 +701,7 @@ app.patch('/api/orders/:id/status', async (req, res) => {
     });
     res.json(order);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[API ERROR]', error.message); res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
@@ -641,7 +713,7 @@ app.get('/api/reviews', async (req, res) => {
     });
     res.json(reviews);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[API ERROR]', error.message); res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
@@ -661,7 +733,7 @@ app.post('/api/reviews', async (req, res) => {
     });
     res.json(review);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[API ERROR]', error.message); res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
@@ -673,7 +745,7 @@ app.get('/api/contacts', async (req, res) => {
     });
     res.json(contacts);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[API ERROR]', error.message); res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
@@ -703,11 +775,11 @@ app.post('/api/contacts', async (req, res) => {
 
     res.json({ success: true, contact });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[API ERROR]', error.message); res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
-app.delete('/api/contacts/:id', async (req, res) => {
+app.delete('/api/contacts/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     await prisma.contactMessage.delete({
@@ -715,36 +787,89 @@ app.delete('/api/contacts/:id', async (req, res) => {
     });
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[API ERROR]', error.message); res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
 // ── 4.5. REGISTERED USERS, SITE SETTINGS & VISITOR TRACKER API ────────────
-app.get('/api/users', async (req, res) => {
+app.get('/api/users', requireAdmin, async (req, res) => {
   try {
     const users = await prisma.user.findMany({
       where: { role: { not: 'ADMIN' } },
       orderBy: { createdAt: 'desc' },
-      include: { orders: true, verifications: true }
+      // Explicit field list: `password` is never selected, so it cannot be leaked.
+      // (Prisma forbids mixing `select` with `include`, so relations are nested.)
+      select: {
+        id: true, phone: true, fullName: true, role: true, avatar: true,
+        address: true, isVerified: true, createdAt: true,
+        passportSeries: true, pinfl: true,
+        passportFront: true, passportBack: true, selfieUrl: true,
+        orders: true,
+        verifications: { select: { id: true, status: true, createdAt: true } }
+      }
     });
-    res.json(users);
+    res.json(decryptRecordsPII(users));
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    if (error instanceof KycCryptoError) {
+      console.error('[API ERROR] KYC decrypt failed:', error.code);
+      return res.status(500).json({ error: 'KYC ma\'lumotlarini ochib bo\'lmadi.' });
+    }
+    console.error('[API ERROR] GET /api/users:', error.message);
+    res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
-app.get('/api/settings', async (req, res) => {
+// ── SETTINGS API ────────────────────────────────────────────────────────────
+// Bot token / MyID secret are never returned to any client, only booleans.
+function safeSettings(settings) {
+  const { botToken, myIdClientSecret, ...safe } = settings;
+  // Reflect the *effective* config: an env token still makes Telegram work, so
+  // the admin panel must not claim "not configured" when a fallback is active.
+  const envToken = (process.env.TELEGRAM_BOT_TOKEN || '').trim();
+  const envSecret = (process.env.MYID_CLIENT_SECRET || '').trim();
+  return {
+    ...safe,
+    botTokenConfigured: Boolean((botToken && botToken.trim()) || envToken),
+    botTokenSource: botToken && botToken.trim() ? 'database' : (envToken ? 'env' : null),
+    myIdClientSecretConfigured: Boolean((myIdClientSecret && myIdClientSecret.trim()) || envSecret)
+  };
+}
+
+async function loadSettings() {
+  let settings = await prisma.siteSettings.findUnique({ where: { id: 'default' } });
+  if (!settings) settings = await prisma.siteSettings.create({ data: { id: 'default' } });
+  return settings;
+}
+
+// Public-safe settings for anonymous visitors (contact info only).
+app.get('/api/settings/public', async (_req, res) => {
   try {
-    let settings = await prisma.siteSettings.findUnique({ where: { id: 'default' } });
-    if (!settings) {
-      settings = await prisma.siteSettings.create({
-        data: { id: 'default' }
-      });
-    }
-    const { botToken: _secret, myIdClientSecret: _myIdSecret, ...safeSettings } = settings;
-    res.json(safeSettings);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    const s = await loadSettings();
+    res.json({
+      companyName: s.companyName,
+      phone: s.phone,
+      email: s.email,
+      telegram: s.telegram,
+      instagram: s.instagram,
+      address: s.address,
+      visitCount: s.visitCount,
+      deliverySlotLabel: s.deliverySlotLabel,
+      deliveryStartHour: s.deliveryStartHour,
+      deliveryEndHour: s.deliveryEndHour,
+      maxRentalDays: s.maxRentalDays,
+      minRentalDays: s.minRentalDays
+    });
+  } catch {
+    res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
+  }
+});
+
+// Full settings — admin only (was previously readable by anyone, incl. secrets).
+app.get('/api/settings', requireAdmin, async (_req, res) => {
+  try {
+    res.json(safeSettings(await loadSettings()));
+  } catch {
+    res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
@@ -756,7 +881,7 @@ async function validateBotToken(token) {
     if (!data.ok) return { valid: false, error: data.description || 'Token noto\'g\'ri' };
     return { valid: true, botInfo: data.result };
   } catch (err) {
-    return { valid: false, error: err.message };
+    return { valid: false, error: 'Telegram API ga ulanib bo\'lmadi.' };
   }
 }
 
@@ -766,129 +891,185 @@ async function validateChatId(token, chatId) {
     const res = await fetch(`https://api.telegram.org/bot${token.trim()}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId.trim(), text: '✅ VOLTMAXHUB Bot sozlamalari tasdiqlandi. Test xabari.' })
+      body: JSON.stringify({
+        chat_id: chatId.trim(),
+        text: '✅ VOLTMAXHUB Bot sozlamalari tasdiqlandi. Test xabari.'
+      })
     });
     const data = await res.json();
     if (!data.ok) return { valid: false, error: data.description || 'Chat ID noto\'g\'ri yoki bot admin emas' };
     return { valid: true };
-  } catch (err) {
-    return { valid: false, error: err.message };
+  } catch {
+    return { valid: false, error: 'Telegram API ga ulanib bo\'lmadi.' };
   }
 }
 
-app.post('/api/settings/validate-telegram', async (req, res) => {
+// Verify a bot token + chat id without persisting anything.
+app.post('/api/settings/validate-telegram', requireAdmin, async (req, res) => {
   try {
-    if (req.user?.role !== 'ADMIN') return res.status(403).json({ error: 'Admin ruxsati kerak.' });
-    const { botToken, botChatId } = req.body;
-    
+    const botToken = v.str(req.body?.botToken, 'Bot token', { min: 20, max: 200 });
+    const botChatId = v.chatId(req.body?.botChatId, 'Chat ID');
+
     const tokenResult = await validateBotToken(botToken);
-    if (!tokenResult.valid) {
-      return res.json({ success: false, error: `Bot token: ${tokenResult.error}` });
-    }
-    
+    if (!tokenResult.valid) return res.status(400).json({ error: `Bot token: ${tokenResult.error}` });
+
     const chatResult = await validateChatId(botToken, botChatId);
-    if (!chatResult.valid) {
-      return res.json({ success: false, error: `Chat ID: ${chatResult.error}` });
-    }
-    
-    res.json({ success: true, botInfo: tokenResult.botInfo, message: 'Bot token va Chat ID muvaffaqiyatli tasdiqlandi.' });
+    if (!chatResult.valid) return res.status(400).json({ error: `Chat ID: ${chatResult.error}` });
+
+    res.json({ success: true, botInfo: { username: tokenResult.botInfo?.username || null }, message: 'Bot token va Chat ID tasdiqlandi.' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    if (error instanceof ValidationError) return res.status(400).json({ error: error.message });
+    res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
-app.post('/api/settings', async (req, res) => {
+// ── Per-block settings updates (each saves only its own fields) ─────────────
+app.patch('/api/settings/footer', requireAdmin, async (req, res) => {
   try {
-    const { 
-      telegram, instagram, phone, email, address, botChatId, 
-      penaltyRate, legalNoticeDays, visitCount,
-      deliveryStartHour, deliveryEndHour, deliverySlotLabel,
-      maxRentalDays, minRentalDays,
-      myIdEnabled, myIdClientId, myIdClientSecret,
-      botToken,
-      companyName
-    } = req.body;
+    const b = req.body || {};
+    const data = {
+      companyName: v.str(b.companyName, 'Kompaniya nomi', { min: 2, max: 160 }),
+      phone: v.phone(b.phone, 'Telefon', { required: false, minDigits: 7 }),
+      email: v.email(b.email, 'Email', { required: false }),
+      telegram: v.url(b.telegram, 'Telegram havolasi', { required: false }),
+      instagram: v.url(b.instagram, 'Instagram havolasi', { required: false }),
+      address: v.str(b.address, 'Manzil', { required: false, max: 300 })
+    };
+    await prisma.siteSettings.upsert({ where: { id: 'default' }, update: data, create: { id: 'default', ...data } });
+    res.json({ success: true, message: 'Footer sozlamalari saqlandi.', settings: safeSettings(await loadSettings()) });
+  } catch (error) {
+    if (error instanceof ValidationError) return res.status(400).json({ error: error.message });
+    res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
+  }
+});
 
-    const settings = await prisma.siteSettings.upsert({
+app.patch('/api/settings/visitor', requireAdmin, async (req, res) => {
+  try {
+    const visitCount = v.int(req.body?.visitCount, 'Tashriflar soni', { min: 0, max: 10_000_000 });
+    await prisma.siteSettings.upsert({
       where: { id: 'default' },
-      update: {
-        telegram,
-        instagram,
-        phone,
-        email,
-        address,
-        ...(companyName !== undefined ? { companyName } : {}),
-        ...(botChatId !== undefined ? { botChatId } : {}),
-        ...(botToken !== undefined ? { botToken: botToken.trim() } : {}),
-        ...(penaltyRate !== undefined ? { penaltyRate: Number(penaltyRate) } : {}),
-        ...(legalNoticeDays !== undefined ? { legalNoticeDays: Number(legalNoticeDays) } : {}),
-        ...(visitCount !== undefined ? { visitCount: Number(visitCount) } : {}),
-        ...(deliveryStartHour !== undefined ? { deliveryStartHour: Number(deliveryStartHour) } : {}),
-        ...(deliveryEndHour !== undefined ? { deliveryEndHour: Number(deliveryEndHour) } : {}),
-        ...(deliverySlotLabel !== undefined ? { deliverySlotLabel } : {}),
-        ...(maxRentalDays !== undefined ? { maxRentalDays: Number(maxRentalDays) } : {}),
-        ...(minRentalDays !== undefined ? { minRentalDays: Number(minRentalDays) } : {}),
-        ...(myIdEnabled !== undefined ? { myIdEnabled: Boolean(myIdEnabled) } : {}),
-        ...(myIdClientId !== undefined ? { myIdClientId } : {}),
-        ...(myIdClientSecret !== undefined ? { myIdClientSecret } : {})
-      },
-      create: {
-        id: 'default',
-        companyName: companyName || 'VOLTMAXHUB',
-        telegram: telegram || 'https://t.me/voltmaxhub_uz',
-        instagram: instagram || 'https://instagram.com/voltmaxhub',
-        phone: phone || '+998 71 200 50 50',
-        email: email || 'info@voltmaxhub.uz',
-        address: address || 'Toshkent sh., Chilonzor t., 10-mavze 4-uy',
-        botChatId: botChatId || '',
-        botToken: botToken || '',
-        penaltyRate: penaltyRate ? Number(penaltyRate) : 0.5,
-        legalNoticeDays: legalNoticeDays ? Number(legalNoticeDays) : 3,
-        visitCount: visitCount !== undefined ? Number(visitCount) : 1420,
-        deliveryStartHour: deliveryStartHour !== undefined ? Number(deliveryStartHour) : 6,
-        deliveryEndHour: deliveryEndHour !== undefined ? Number(deliveryEndHour) : 9,
-        deliverySlotLabel: deliverySlotLabel || "06:00 - 09:00 (Ertalabki)",
-        maxRentalDays: maxRentalDays !== undefined ? Number(maxRentalDays) : 30,
-        minRentalDays: minRentalDays !== undefined ? Number(minRentalDays) : 1,
-        myIdEnabled: myIdEnabled !== undefined ? Boolean(myIdEnabled) : true,
-        myIdClientId: myIdClientId || '',
-        myIdClientSecret: myIdClientSecret || ''
-      }
+      update: { visitCount },
+      create: { id: 'default', visitCount }
     });
-    const { botToken: _secret, myIdClientSecret: _myIdSecret, ...safeSettings } = settings;
-    res.json(safeSettings);
+    res.json({ success: true, message: 'Tashriflar soni saqlandi.', settings: safeSettings(await loadSettings()) });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    if (error instanceof ValidationError) return res.status(400).json({ error: error.message });
+    res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
-// ── ADMIN CREDENTIALS CHANGE API ──────────────────────────────────────────
-app.post('/api/settings/admin-credentials', async (req, res) => {
+app.patch('/api/settings/delivery', requireAdmin, async (req, res) => {
   try {
-    const { newLogin, newPassword } = req.body;
-    let adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
-    if (adminUser) {
-      adminUser = await prisma.user.update({
-        where: { id: adminUser.id },
-        data: {
-          phone: newLogin || adminUser.phone,
-          password: newPassword || adminUser.password
-        }
-      });
-    } else {
-      adminUser = await prisma.user.create({
-        data: {
-          phone: newLogin || 'admin',
-          password: newPassword || ADMIN_PASSWORD,
-          fullName: 'VOLTMAXHUB Administrator',
-          role: 'ADMIN',
-          isVerified: true
-        }
-      });
+    const b = req.body || {};
+    const data = {
+      deliveryStartHour: v.int(b.deliveryStartHour, 'Boshlanish soati', { min: 0, max: 23 }),
+      deliveryEndHour: v.int(b.deliveryEndHour, 'Tugash soati', { min: 0, max: 23 }),
+      deliverySlotLabel: v.str(b.deliverySlotLabel, 'Yetkazib berish matni', { min: 2, max: 120 }),
+      minRentalDays: v.int(b.minRentalDays, 'Minimal ijara muddati', { min: 1, max: 365 }),
+      maxRentalDays: v.int(b.maxRentalDays, 'Maksimal ijara muddati', { min: 1, max: 365 })
+    };
+    if (data.deliveryEndHour <= data.deliveryStartHour) {
+      throw new ValidationError('Tugash soati boshlanishdan katta bo\'lishi kerak.');
     }
-    res.json({ success: true, message: 'Admin login va paroli muvaffaqiyatli saqlandi!', adminUser });
+    if (data.minRentalDays > data.maxRentalDays) {
+      throw new ValidationError('Minimal muddat maksimal muddatdan katta bo\'lmasligi kerak.');
+    }
+    await prisma.siteSettings.upsert({ where: { id: 'default' }, update: data, create: { id: 'default', ...data } });
+    res.json({ success: true, message: 'Yetkazib berish sozlamalari saqlandi.', settings: safeSettings(await loadSettings()) });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    if (error instanceof ValidationError) return res.status(400).json({ error: error.message });
+    res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
+  }
+});
+
+app.patch('/api/settings/telegram', requireAdmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const data = {
+      botChatId: v.chatId(b.botChatId, 'Chat ID', { required: false }),
+      penaltyRate: v.num(b.penaltyRate, 'Penya stavkasi', { min: 0, max: 100 }),
+      legalNoticeDays: v.int(b.legalNoticeDays, 'Sudga berish muddati', { min: 1, max: 90 })
+    };
+    // Token is write-only: only update when a non-empty value is supplied.
+    if (typeof b.botToken === 'string' && b.botToken.trim()) {
+      const token = b.botToken.trim();
+      if (token.length < 20 || token.length > 200) throw new ValidationError('Bot token formati noto\'g\'ri.');
+      data.botToken = token;
+    }
+    await prisma.siteSettings.upsert({ where: { id: 'default' }, update: data, create: { id: 'default', ...data } });
+    res.json({ success: true, message: 'Telegram sozlamalari saqlandi.', settings: safeSettings(await loadSettings()) });
+  } catch (error) {
+    if (error instanceof ValidationError) return res.status(400).json({ error: error.message });
+    res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
+  }
+});
+
+// Telegram status: metadata only, never the token.
+app.get('/api/settings/telegram', requireAdmin, async (_req, res) => {
+  try {
+    const s = await loadSettings();
+    const envToken = process.env.TELEGRAM_BOT_TOKEN || '';
+    const envChat = process.env.TELEGRAM_CHAT_ID || '';
+    res.json({
+      chatId: s.botChatId || envChat || null,
+      chatIdSource: s.botChatId ? 'database' : (envChat ? 'env' : null),
+      tokenConfigured: Boolean((s.botToken && s.botToken.trim()) || envToken),
+      tokenSource: s.botToken ? 'database' : (envToken ? 'env' : null)
+    });
+  } catch {
+    res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
+  }
+});
+
+app.patch('/api/settings/myid', requireAdmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const data = {
+      myIdEnabled: v.bool(b.myIdEnabled),
+      myIdClientId: v.str(b.myIdClientId, 'MyID Client ID', { required: false, max: 200 })
+    };
+    if (typeof b.myIdClientSecret === 'string' && b.myIdClientSecret.trim()) {
+      data.myIdClientSecret = b.myIdClientSecret.trim();
+    }
+    await prisma.siteSettings.upsert({ where: { id: 'default' }, update: data, create: { id: 'default', ...data } });
+    res.json({ success: true, message: 'MyID sozlamalari saqlandi.', settings: safeSettings(await loadSettings()) });
+  } catch (error) {
+    if (error instanceof ValidationError) return res.status(400).json({ error: error.message });
+    res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
+  }
+});
+
+// ── ADMIN CREDENTIALS CHANGE API ────────────────────────────────────────────
+app.post('/api/settings/admin-credentials', requireAdmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const newLogin = v.str(b.newLogin, 'Admin login', { required: false, min: 3, max: 60 });
+    const newPassword = v.str(b.newPassword, 'Admin paroli', { required: false, min: 8, max: 200 });
+
+    if (!newLogin && !newPassword) {
+      throw new ValidationError('Yangi login yoki parol kiriting.');
+    }
+
+    // Update the currently authenticated admin, not "whichever admin is first".
+    const adminUser = await prisma.user.findUnique({ where: { id: req.user.id } });
+    if (!adminUser) return res.status(404).json({ error: 'Admin foydalanuvchi topilmadi.' });
+
+    const data = {};
+    if (newLogin && newLogin !== adminUser.phone) {
+      const taken = await prisma.user.findUnique({ where: { phone: newLogin } });
+      if (taken) throw new ValidationError('Bu login band qilingan.');
+      data.phone = newLogin;
+    }
+    if (newPassword) data.password = await hashPassword(newPassword);
+
+    const updated = await prisma.user.update({ where: { id: adminUser.id }, data });
+
+    // Keep the current session valid after a credential change.
+    setAuthCookie(res, updated);
+    res.json({ success: true, message: 'Admin ma\'lumotlari yangilandi.', user: publicUser(updated) });
+  } catch (error) {
+    if (error instanceof ValidationError) return res.status(400).json({ error: error.message });
+    res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
@@ -927,21 +1108,23 @@ app.post('/api/auth/google', async (req, res) => {
     });
 
     if (!user) {
+      // OAuth-only account: store an unguessable random secret, never a literal.
       user = await prisma.user.create({
         data: {
           phone: userEmail,
-          fullName: userName,
-          password: 'google_oauth_authenticated',
+          fullName: v.str(userName, 'Ism', { required: false, max: 120 }) || userEmail,
+          password: await hashPassword(crypto.randomBytes(32).toString('hex')),
           role: 'CLIENT',
-          isVerified: false
+          isVerified: true,
+          avatar: v.url(picture, 'Avatar', { required: false }) || null
         }
       });
     }
 
     setAuthCookie(res, user);
-    res.json({ success: true, user });
+    res.json({ success: true, user: publicUser(user) });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[API ERROR]', error.message); res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
@@ -961,21 +1144,33 @@ app.post('/api/stats/visit', async (req, res) => {
     }
     res.json({ success: true, visitCount: settings.visitCount });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[API ERROR]', error.message); res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
 
 // ── 5. KYC VERIFICATION API ────────────────────────────────────────────────
-app.get('/api/verifications', async (req, res) => {
+app.get('/api/verifications', requireAdmin, async (req, res) => {
   try {
     const verifications = await prisma.verification.findMany({
-      include: { user: true },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      // Explicit fields: never `include: { user: true }`, which would drag in
+      // the user's password hash.
+      select: {
+        id: true, userId: true, passportSeries: true, pinfl: true,
+        passportFront: true, passportBack: true, selfieUrl: true,
+        status: true, rejectionReason: true, createdAt: true,
+        user: { select: { id: true, phone: true, fullName: true, isVerified: true } }
+      }
     });
-    res.json(verifications);
+    // Decrypt for the admin UI; ciphertext must never reach the client.
+    res.json(decryptRecordsPII(verifications));
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    if (error instanceof KycCryptoError) {
+      console.error('[API ERROR] KYC decrypt failed:', error.code);
+      return res.status(500).json({ error: 'KYC ma\'lumotlarini ochib bo\'lmadi.' });
+    }
+    console.error('[API ERROR]', error.message); res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
@@ -989,7 +1184,7 @@ app.post('/api/verifications', async (req, res) => {
     if (!targetUserId && phone) {
       let u = await prisma.user.findUnique({ where: { phone } });
       if (!u) {
-        u = await prisma.user.create({ data: { phone, passportSeries, pinfl, isVerified: false } });
+        u = await prisma.user.create({ data: encryptUserPII({ phone, passportSeries, pinfl, isVerified: false }) });
       }
       targetUserId = u.id;
     }
@@ -997,16 +1192,16 @@ app.post('/api/verifications', async (req, res) => {
     if (targetUserId) {
       await prisma.user.update({
         where: { id: targetUserId },
-        data: {
+        data: encryptUserPII({
           ...(passportSeries ? { passportSeries } : {}),
           ...(pinfl ? { pinfl } : {}),
           isVerified: false
-        }
+        })
       }).catch(e => console.error('User passport update error:', e));
     }
 
     const verification = await prisma.verification.create({
-      data: {
+      data: encryptVerificationPII({
         userId: targetUserId,
         passportSeries: passportSeries || '',
         pinfl: pinfl || '',
@@ -1014,17 +1209,21 @@ app.post('/api/verifications', async (req, res) => {
         passportBack,
         selfieUrl,
         status: 'PENDING'
-      }
+      })
     });
-    res.json(verification);
+    // Return the request values the client already knows, never ciphertext.
+    res.json({ ...verification, ...decryptRecordPII(verification) });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    if (error instanceof KycCryptoError) {
+      console.error('[API ERROR] KYC encrypt failed:', error.code);
+      return res.status(503).json({ error: 'KYC xizmati vaqtincha ishlamaydi.' });
+    }
+    console.error('[API ERROR]', error.message); res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
-app.patch('/api/verifications/:id', async (req, res) => {
+app.patch('/api/verifications/:id', requireAdmin, async (req, res) => {
   try {
-    if (req.user?.role !== 'ADMIN') return res.status(403).json({ error: 'KYC holatini o‘zgartirish uchun admin ruxsati kerak.' });
     const { id } = req.params;
     const { status, rejectionReason } = req.body;
     const verification = await prisma.verification.update({
@@ -1043,21 +1242,25 @@ app.patch('/api/verifications/:id', async (req, res) => {
         data: { isVerified: false }
       });
     }
-    res.json(verification);
+    res.json(decryptRecordPII(verification));
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    if (error instanceof KycCryptoError) {
+      console.error('[API ERROR] KYC decrypt failed:', error.code);
+      return res.status(500).json({ error: 'KYC ma\'lumotlarini ochib bo\'lmadi.' });
+    }
+    console.error('[API ERROR]', error.message); res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
-app.patch('/api/users/:id/kyc-status', async (req, res) => {
+app.patch('/api/users/:id/kyc-status', requireAdmin, async (req, res) => {
   try {
-    if (req.user?.role !== 'ADMIN') return res.status(403).json({ error: 'KYC holatini o‘zgartirish uchun admin ruxsati kerak.' });
     const { id } = req.params;
     const { isVerified } = req.body;
 
     const updatedUser = await prisma.user.update({
       where: { id },
-      data: { isVerified: Boolean(isVerified) }
+      data: { isVerified: Boolean(isVerified) },
+      select: { id: true, phone: true, fullName: true, role: true, avatar: true, isVerified: true }
     });
 
     const newStatus = isVerified ? 'APPROVED' : 'REJECTED';
@@ -1068,7 +1271,7 @@ app.patch('/api/users/:id/kyc-status', async (req, res) => {
 
     res.json({ success: true, user: updatedUser });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[API ERROR]', error.message); res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
@@ -1098,10 +1301,9 @@ app.post('/api/checkout/payme', async (req, res) => {
 });
 
 // ── 7. LEGAL AUTO-PDF ENGINE (DA'VO ARIZASI GENERATOR) ────────────────────
-app.get('/api/legal/davo-arizasi/:orderId', async (req, res) => {
+app.get('/api/legal/davo-arizasi/:orderId', requireAdmin, async (req, res) => {
   try {
     // The legal document contains sensitive customer identity data.
-    if (req.user?.role !== 'ADMIN') return res.status(403).send('Ruxsat yo‘q. Admin sifatida kiring.');
     const { orderId } = req.params;
     const order = await prisma.order.findUnique({
       where: { id: orderId },
@@ -1223,9 +1425,8 @@ app.get('/api/legal/davo-arizasi/:orderId', async (req, res) => {
 });
 
 // ── 8. TELEGRAM BOT DISPATCH ENGINE FOR LEGAL PETITION ────────────────────
-app.post('/api/legal/send-telegram', async (req, res) => {
+app.post('/api/legal/send-telegram', requireAdmin, async (req, res) => {
   try {
-    if (req.user?.role !== 'ADMIN') return res.status(403).json({ error: 'Telegram hujjatlarini yuborish uchun admin sifatida kiring.' });
     const { orderId, chatId } = req.body;
     const activeToken = process.env.TELEGRAM_BOT_TOKEN || '';
     const adminChatId = process.env.TELEGRAM_CHAT_ID || '';
@@ -1306,7 +1507,7 @@ app.post('/api/legal/send-telegram', async (req, res) => {
     if (!result.ok) throw new Error(result.description || 'Telegram API xatoligi');
     res.json({ success: true, result, previewText: messageText, message: 'PDF va mijoz ma’lumotlari admin Telegram chatiga yuborildi.' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[API ERROR]', error.message); res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
   }
 });
 
@@ -1326,8 +1527,7 @@ app.get('/api/telegram/status', async (_req, res) => {
   res.json(status);
 });
 
-app.post('/api/telegram/setup-webhook', async (req, res) => {
-  if (req.user?.role !== 'ADMIN') return res.status(403).json({ error: 'Admin ruxsati kerak.' });
+app.post('/api/telegram/setup-webhook', requireAdmin, async (req, res) => {
   const token = process.env.TELEGRAM_BOT_TOKEN || '';
   const publicApi = process.env.PUBLIC_API_URL || '';
   if (!token) return res.status(503).json({ error: 'TELEGRAM_BOT_TOKEN server .env faylida sozlanmagan.' });
@@ -1340,7 +1540,7 @@ app.post('/api/telegram/setup-webhook', async (req, res) => {
     const result = await response.json();
     if (!result.ok) throw new Error(result.description || 'Telegram webhook sozlanmadi.');
     res.json({ success: true, message: 'Telegram webhook sozlandi.' });
-  } catch (error) { res.status(502).json({ error: error.message }); }
+  } catch (error) { console.error('[API ERROR] telegram webhook:', error.message); res.status(502).json({ error: 'Telegram sozlanmadi.' }); }
 });
 
 // Telegram webhook: /start replies to its sender; private customer data goes
@@ -1434,6 +1634,9 @@ async function startTelegramPolling() {
   }
 }
 
+
+// ── Global error handler: no stack traces, SQL, paths or secrets to clients ──
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`VOLTMAXHUB Backend API Server running on http://localhost:${PORT}`);

@@ -12,7 +12,7 @@ const InstagramIcon = ({ size = 16, color = 'currentColor' }) => (
 import Navbar from './components/Navbar';
 import HomeHero from './components/HomeHero';
 import Catalog from './components/Catalog';
-import SolarPanelsPage from './components/SolarPanelsPage';
+import GeneratorRentalPage from './components/GeneratorRentalPage';
 import ReviewsPage from './components/ReviewsPage';
 import ContactPage from './components/ContactPage';
 import ProductViewModal from './components/ProductViewModal';
@@ -24,7 +24,7 @@ import AdminCRM from './components/AdminCRM';
 import AdminLoginPage from './components/AdminLoginPage';
 import WishlistPanel from './components/WishlistPanel';
 import { translations } from './utils/translations';
-import { apiUrl } from './utils/api';
+import { apiUrl, apiFetch } from './utils/api';
 import VoltMaxLogo from './components/VoltMaxLogo';
 
 
@@ -58,9 +58,9 @@ export default function App() {
   useEffect(() => {
     const verifySession = async () => {
       try {
-        const res = await fetch(apiUrl('/api/auth/me'), { credentials: 'include' });
-        if (res.ok) {
-          const data = await res.json();
+        const data0 = await apiFetch('/api/auth/me').catch(() => ({ success: false }));
+        {
+          const data = data0;
           if (data.success && data.user) {
             setUser(data.user);
             // If admin, ensure they land on admin-dashboard
@@ -159,44 +159,38 @@ export default function App() {
   // Fetch data from backend API Server & sync user with Database
   const loadData = () => {
     setDataLoading(true);
-    fetch(apiUrl('/api/products'))
-      .then(res => res.json())
+    apiFetch('/api/products')
       .then(data => {
         if (Array.isArray(data)) setProducts(data);
       })
       .catch(err => console.error('Products fetch error:', err))
       .finally(() => setDataLoading(false));
 
-    fetch(apiUrl('/api/orders'))
-      .then(res => res.json())
+    apiFetch('/api/orders')
       .then(data => {
         if (Array.isArray(data)) setOrders(data);
       })
       .catch(err => console.error('Orders fetch error:', err));
 
-    fetch(apiUrl('/api/verifications'))
-      .then(res => res.json())
+    apiFetch('/api/verifications')
       .then(data => {
         if (Array.isArray(data)) setVerifications(data);
       })
       .catch(err => console.error('Verifications fetch error:', err));
 
-    fetch(apiUrl('/api/reviews'))
-      .then(res => res.json())
+    apiFetch('/api/reviews')
       .then(data => {
         if (Array.isArray(data)) setReviews(data);
       })
       .catch(err => console.error('Reviews fetch error:', err));
 
-    fetch(apiUrl('/api/contacts'))
-      .then(res => res.json())
+    apiFetch('/api/contacts')
       .then(data => {
         if (Array.isArray(data)) setContactMessages(data);
       })
       .catch(err => console.error('Contacts fetch error:', err));
 
-    fetch(apiUrl('/api/users'))
-      .then(res => res.json())
+    apiFetch('/api/users')
       .then(data => {
         if (Array.isArray(data)) {
           setUsers(data);
@@ -222,12 +216,10 @@ export default function App() {
       })
       .catch(err => console.error('Users fetch error:', err));
 
-    fetch(apiUrl('/api/settings'))
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.id) setSiteSettings(data);
-      })
-      .catch(err => console.error('Settings fetch error:', err));
+    // Public (anonymous-safe) subset: full settings now require admin.
+    apiFetch('/api/settings/public')
+      .then(data => { if (data) setSiteSettings(prev => ({ ...prev, ...data })); })
+      .catch(() => {});
   };
 
   useEffect(() => {
@@ -235,8 +227,7 @@ export default function App() {
     // Register visitor count once per browser session
     if (!sessionStorage.getItem('voltmaxhub_visited')) {
       sessionStorage.setItem('voltmaxhub_visited', 'true');
-      fetch(apiUrl('/api/stats/visit'), { method: 'POST' })
-        .then(res => res.json())
+      apiFetch('/api/stats/visit', { method: 'POST' })
         .then(data => {
           if (data.visitCount) {
             setSiteSettings(prev => ({ ...prev, visitCount: data.visitCount }));
@@ -246,20 +237,11 @@ export default function App() {
     }
   }, []);
 
-  const handleSaveSettings = async (newSettings) => {
-    try {
-      const res = await fetch(apiUrl('/api/settings'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newSettings)
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setSiteSettings(data);
-        showToast(lang === 'RU' ? 'Настройки успешно сохранены!' : lang === 'EN' ? 'Settings saved successfully!' : 'Tizim sozlamalari muvaffaqiyatli saqlandi!');
-      }
-    } catch (err) {
-      showToast('Sozlamalarni saqlashda xatolik: ' + err.message, 'error');
+  // Each settings card saves itself through its own endpoint and passes the
+  // authoritative server state back, so the UI never drifts from the database.
+  const handleSaveSettings = (serverState) => {
+    if (serverState && typeof serverState === 'object') {
+      setSiteSettings(prev => ({ ...prev, ...serverState }));
     }
   };
 
@@ -291,7 +273,7 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
-      await fetch(apiUrl('/api/auth/logout'), { method: 'POST', credentials: 'include' });
+      await apiFetch('/api/auth/logout', { method: 'POST' });
     } catch (err) {
       console.error('Logout request failed:', err);
     }
@@ -308,14 +290,11 @@ export default function App() {
 
   const handleAddReview = async (reviewData) => {
     try {
-      const res = await fetch(apiUrl('/api/reviews'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(reviewData)
-      });
-      if (res.ok) {
-        loadData();
-      }
+      await apiFetch('/api/reviews', {
+  method: 'POST',
+  body: reviewData
+});
+      loadData();
     } catch (err) {
       console.error('Review submit error:', err);
     }
@@ -323,14 +302,11 @@ export default function App() {
 
   const handleSendMessage = async (contactData) => {
     try {
-      const res = await fetch(apiUrl('/api/contacts'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(contactData)
-      });
-      if (res.ok) {
-        loadData();
-      }
+      await apiFetch('/api/contacts', {
+  method: 'POST',
+  body: contactData
+});
+      loadData();
     } catch (err) {
       console.error('Contact send error:', err);
     }
@@ -338,18 +314,14 @@ export default function App() {
 
   const handleDeleteContactMessage = async (id) => {
     try {
-      const res = await fetch(apiUrl(`/api/contacts/${id}`), {
-        method: 'DELETE'
-      });
-      if (res.ok) {
-        loadData();
-        showToast(
-          lang === 'RU' ? 'Сообщение удалено' :
-          lang === 'EN' ? 'Message deleted' :
-          'Murojaat o\'chirildi',
-          'info'
-        );
-      }
+      await apiFetch(`/api/contacts/${id}`, { method: 'DELETE' });
+      loadData();
+      showToast(
+        lang === 'RU' ? 'Сообщение удалено' :
+        lang === 'EN' ? 'Message deleted' :
+        'Murojaat o\'chirildi',
+        'info'
+      );
     } catch (err) {
       console.error('Contact delete error:', err);
     }
@@ -357,16 +329,10 @@ export default function App() {
 
   const handleBookOrder = async (orderPayload) => {
     try {
-      const res = await fetch(apiUrl('/api/orders'), {
+      const data = await apiFetch('/api/orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(orderPayload)
+        body: orderPayload
       });
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Buyurtma yaratishda xatolik');
-      }
 
       if (orderPayload.type === 'BUY') {
         const providerEndpoint = orderPayload.paymentProvider === 'PAYME' ? apiUrl('/api/checkout/payme') : apiUrl('/api/checkout/click');
@@ -399,21 +365,16 @@ export default function App() {
 
   const handleUpdateUserAvatar = async (avatarUrl) => {
     try {
-      const res = await fetch(apiUrl('/api/users/profile'), {
+      const data = await apiFetch('/api/users/profile', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ userId: user?.id, avatar: avatarUrl })
+        body: { avatar: avatarUrl }
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.user) {
-          setUser(prev => ({ ...prev, ...data.user, avatar: avatarUrl }));
-        } else {
-          setUser(prev => ({ ...prev, avatar: avatarUrl }));
-        }
-        showToast('Profil rasmi muvaffaqiyatli yangilandi!');
+      if (data.user) {
+        setUser(prev => ({ ...prev, ...data.user, avatar: avatarUrl }));
+      } else {
+        setUser(prev => ({ ...prev, avatar: avatarUrl }));
       }
+      showToast('Profil rasmi muvaffaqiyatli yangilandi!');
     } catch (err) {
       showToast('Profil rasmini saqlashda xatolik: ' + err.message, 'error');
     }
@@ -439,36 +400,29 @@ export default function App() {
         selfieUrl
       };
 
-      const res = await fetch(apiUrl('/api/verifications'), {
+      await apiFetch('/api/verifications', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload)
+        body: payload
       });
-      if (res.ok) {
-        setShowKYCModal(false);
-        if (user) {
-          const updatedUser = {
-            ...user,
-            isVerified: false,
-            is_verified: false,
-            verificationStatus: 'PENDING',
-            passportSeries: payload.passportSeries,
-            pinfl: payload.pinfl
-          };
-          setUser(updatedUser);
-        }
-        loadData();
-        showToast(
-          lang === 'RU' ? 'Документы отправлены! Ожидают проверки админом.' :
-          lang === 'EN' ? 'KYC submitted! Pending admin review.' :
-          'KYC hujjatlaringiz yuborildi! Admin ko\'rib chiqgach tasdiqlanadi.',
-          'info'
-        );
-      } else {
-        const data = await res.json().catch(() => ({}));
-        showToast('KYC yuborilmadi: ' + (data.error || 'Server so‘rovni qabul qilmadi.'), 'error');
+      setShowKYCModal(false);
+      if (user) {
+        const updatedUser = {
+          ...user,
+          isVerified: false,
+          is_verified: false,
+          verificationStatus: 'PENDING',
+          passportSeries: payload.passportSeries,
+          pinfl: payload.pinfl
+        };
+        setUser(updatedUser);
       }
+      loadData();
+      showToast(
+        lang === 'RU' ? 'Документы отправлены! Ожидают проверки админом.' :
+        lang === 'EN' ? 'KYC submitted! Pending admin review.' :
+        'KYC hujjatlaringiz yuborildi! Admin ko\'rib chiqgach tasdiqlanadi.',
+        'info'
+      );
     } catch (err) {
       showToast('KYC yuborishda xatolik: ' + err.message, 'error');
     }
@@ -476,19 +430,15 @@ export default function App() {
 
   const handleToggleUserKYC = async (userId, targetStatus) => {
     try {
-      const res = await fetch(apiUrl(`/api/users/${userId}/kyc-status`), {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ isVerified: targetStatus })
-      });
-      if (res.ok) {
-        loadData();
-        showToast(
-          targetStatus ? 'Foydalanuvchi KYC holati tasdiqlandi!' : 'Foydalanuvchi KYC tasdiqlanishi bekor qilindi.',
-          targetStatus ? 'success' : 'warning'
-        );
-      }
+      await apiFetch(`/api/users/${userId}/kyc-status`, {
+  method: 'PATCH',
+  body: { isVerified: targetStatus }
+});
+      loadData();
+      showToast(
+        targetStatus ? 'Foydalanuvchi KYC holati tasdiqlandi!' : 'Foydalanuvchi KYC tasdiqlanishi bekor qilindi.',
+        targetStatus ? 'success' : 'warning'
+      );
     } catch (err) {
       showToast('KYC holatini o\'zgartirishda xatolik: ' + err.message, 'error');
     }
@@ -496,12 +446,10 @@ export default function App() {
 
   const handleApproveKYC = async (kycId) => {
     try {
-      const res = await fetch(apiUrl(`/api/verifications/${kycId}`), {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'APPROVED' })
-      });
-      if (!res.ok) throw new Error((await res.json()).error || 'KYC tasdiqlanmadi');
+      await apiFetch(`/api/verifications/${kycId}`, {
+  method: 'PATCH',
+  body: { status: 'APPROVED' }
+});
       loadData();
       showToast('KYC Hujjati muvaffaqiyatli tasdiqlandi!');
     } catch (err) {
@@ -511,12 +459,10 @@ export default function App() {
 
   const handleRejectKYC = async (kycId, reason) => {
     try {
-      const res = await fetch(apiUrl(`/api/verifications/${kycId}`), {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'REJECTED', rejectionReason: reason })
-      });
-      if (!res.ok) throw new Error((await res.json()).error || 'KYC rad etilmadi');
+      await apiFetch(`/api/verifications/${kycId}`, {
+  method: 'PATCH',
+  body: { status: 'REJECTED', rejectionReason: reason }
+});
       loadData();
       showToast('KYC Hujjati rad etildi.', 'warning');
     } catch (err) {
@@ -526,11 +472,10 @@ export default function App() {
 
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
-      await fetch(apiUrl(`/api/orders/${orderId}/status`), {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
-      });
+      await apiFetch(`/api/orders/${orderId}/status`, {
+  method: 'PATCH',
+  body: { status: newStatus }
+});
       loadData();
     } catch (err) {
       showToast('Statusni o\'zgartirishda xatolik: ' + err.message, 'error');
@@ -539,18 +484,12 @@ export default function App() {
 
   const handleAddProduct = async (newProduct) => {
     try {
-      const res = await fetch(apiUrl('/api/products'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newProduct)
-      });
-      if (res.ok) {
-        loadData();
-        showToast('Yangi generator mahsuloti bazaga qo\'shildi!');
-      } else {
-        const error = await res.json().catch(() => ({}));
-        showToast(error.error || 'Mahsulot qo\'shilmadi.', 'error');
-      }
+      await apiFetch('/api/products', {
+  method: 'POST',
+  body: newProduct
+});
+      loadData();
+      showToast('Yangi generator mahsuloti bazaga qo\'shildi!');
     } catch (err) {
       showToast('Mahsulot qo\'shishda xatolik: ' + err.message, 'error');
     }
@@ -558,18 +497,12 @@ export default function App() {
 
   const handleEditProduct = async (productId, updatedData) => {
     try {
-      const res = await fetch(apiUrl(`/api/products/${productId}`), {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedData)
-      });
-      if (res.ok) {
-        loadData();
-        showToast('Mahsulot ma\'lumotlari muvaffaqiyatli yangilandi!');
-      } else {
-        const error = await res.json().catch(() => ({}));
-        showToast(error.error || 'Mahsulot yangilanmadi.', 'error');
-      }
+      await apiFetch(`/api/products/${productId}`, {
+  method: 'PATCH',
+  body: updatedData
+});
+      loadData();
+      showToast('Mahsulot ma\'lumotlari muvaffaqiyatli yangilandi!');
     } catch (err) {
       showToast('Mahsulotni tahrirlashda xatolik: ' + err.message, 'error');
     }
@@ -577,16 +510,9 @@ export default function App() {
 
   const handleDeleteProduct = async (productId) => {
     try {
-      const res = await fetch(apiUrl(`/api/products/${productId}`), {
-        method: 'DELETE'
-      });
-      if (res.ok) {
-        loadData();
-        showToast('Mahsulot bazadan o\'chirildi.', 'warning');
-      } else {
-        const error = await res.json().catch(() => ({}));
-        showToast(error.error || 'Mahsulot o\'chirilmadi.', 'error');
-      }
+      await apiFetch(`/api/products/${productId}`, { method: 'DELETE' });
+      loadData();
+      showToast('Mahsulot bazadan o\'chirildi.', 'warning');
     } catch (err) {
       showToast('Mahsulotni o\'chirishda xatolik: ' + err.message, 'error');
     }
@@ -649,7 +575,7 @@ export default function App() {
         )}
 
         {activeTab === 'solar-panels' && (
-          <SolarPanelsPage 
+          <GeneratorRentalPage 
             products={products} 
             onSelectProduct={(product) => setSelectedProduct(product)} 
             onViewProduct={(product) => setViewingProduct(product)}
@@ -728,7 +654,7 @@ export default function App() {
               <VoltMaxLogo size="medium" />
             </div>
             <p style={{ fontSize: '0.85rem', color: '#94a3b8', lineHeight: '1.6' }}>
-              {lang === 'RU' ? "Платформа №1 в Узбекистане по продаже и аренде солнечных генераторов." : lang === 'EN' ? "N1 Solar Generators Sales & Rental Platform in Uzbekistan." : "O'zbekiston bo'yicha N1 Quyosh Generatorlari Sotuv va Ijara Platformasi."}
+              {lang === 'RU' ? "Платформа аренды тихих и инверторных генераторов в Узбекистане." : lang === 'EN' ? "Quiet & inverter generator rental platform in Uzbekistan." : "O'zbekiston bo'yicha shovqinsiz va inverterli generatorlar ijarasi platformasi."}
             </p>
           </div>
 
@@ -739,7 +665,7 @@ export default function App() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.88rem' }}>
               <span style={{ cursor: 'pointer', color: activeTab === 'home' ? '#00F0FF' : '#94a3b8' }} onClick={() => setActiveTab('home')}>{t.home || 'Asosiy'}</span>
               <span style={{ cursor: 'pointer', color: activeTab === 'catalog' ? '#00F0FF' : '#94a3b8' }} onClick={() => setActiveTab('catalog')}>{t.catalog || 'Katalog'}</span>
-              <span style={{ cursor: 'pointer', color: activeTab === 'solar-panels' ? '#f59e0b' : '#94a3b8' }} onClick={() => setActiveTab('solar-panels')}>{t.solarPanels || 'Quyosh Panellari'}</span>
+              <span style={{ cursor: 'pointer', color: activeTab === 'solar-panels' ? '#f59e0b' : '#94a3b8' }} onClick={() => setActiveTab('solar-panels')}>{t.solarPanels || 'Generatorlar'}</span>
               <span style={{ cursor: 'pointer', color: activeTab === 'reviews' ? '#00F0FF' : '#94a3b8' }} onClick={() => setActiveTab('reviews')}>{t.reviews || 'Sharhlar'}</span>
               <span style={{ cursor: 'pointer', color: activeTab === 'contact' ? '#00F0FF' : '#94a3b8' }} onClick={() => setActiveTab('contact')}>{t.contact || 'Bizga Bog\'lanish'}</span>
             </div>

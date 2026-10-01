@@ -85,7 +85,7 @@ export default function Navbar({
             style={{ fontSize: '0.82rem' }}
           >
             <Sun size={15} style={{ color: '#f59e0b' }} />
-            {t.solarPanels || 'Quyosh Panellari'}
+            {t.solarPanels || 'Generatorlar'}
           </span>
 
           <span 
@@ -556,7 +556,7 @@ export default function Navbar({
               style={{ padding: '0.6rem 0', fontSize: '0.95rem' }}
             >
               <Sun size={17} style={{ color: '#f59e0b' }} />
-              {t.solarPanels || 'Quyosh Panellari'}
+              {t.solarPanels || 'Generatorlar'}
             </span>
 
             <span 

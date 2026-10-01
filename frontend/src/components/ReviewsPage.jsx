@@ -5,7 +5,7 @@ import usePageMeta from '../hooks/usePageMeta';
 export default function ReviewsPage({ reviews = [], onAddReview }) {
   usePageMeta({
     title: 'Mijozlar sharhlari',
-    description: 'VOLTMAXHUB mijozlarining haqiqiy sharhlari va baholari. Quyosh generatorlari va quyosh panellari haqida fikrlar.'
+    description: 'VOLTMAXHUB mijozlarining haqiqiy sharhlari va baholari. Generatorlar ijarasi haqida fikrlar.'
   });
   const [showForm, setShowForm] = useState(false);
   const [userName, setUserName] = useState('');

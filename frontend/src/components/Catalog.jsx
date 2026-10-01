@@ -74,7 +74,7 @@ export default function Catalog({ products, onSelectProduct, onViewProduct, onAd
             <Zap size={14} /> VOLTMAXHUB OFFICIAL PLATFORM
           </div>
           <h1 style={{ fontSize: '2.2rem', fontWeight: '800', lineHeight: 1.25, marginBottom: '0.75rem', letterSpacing: '-0.5px' }}>
-            {t.heroTitle || "VOLTMAXHUB Quyosh Generatorlari va Powerbank Stansiyalari"}
+            {t.heroTitle || "VOLTMAXHUB — Shovqinsiz va Inverterli Generatorlar Ijarasi"}
           </h1>
           <p style={{ color: '#cbd5e1', fontSize: '1rem', lineHeight: 1.6, marginBottom: '1.5rem' }}>
             {t.heroDesc || "Har bir generator qaysi elektr jihoziga va qancha vaqtga yetishini bilib oling."}
@@ -107,7 +107,7 @@ export default function Catalog({ products, onSelectProduct, onViewProduct, onAd
             { id: '1kWh', label: t.models1kWh || '1kWh Modellar' },
             { id: '2kWh', label: t.models2kWh || '1.8kWh & 2kWh' },
             { id: '3kWh+', label: t.modelsHeavy || '3.6kWh & 5.4kWh Heavy' },
-            { id: 'Solar', label: t.solarPanels || 'Quyosh Panellari' }
+            { id: 'Solar', label: t.solarPanels || 'Generatorlar' }
           ].map(cat => (
             <button 
               key={cat.id} 
@@ -168,7 +168,7 @@ export default function Catalog({ products, onSelectProduct, onViewProduct, onAd
                     border: '1px solid rgba(56, 189, 248, 0.3)'
                   }}>
                     <Zap size={12} style={{ flexShrink: 0 }} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{product.capacity || 'Solar Generator'}</span>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{product.capacity || 'Generator'}</span>
                   </span>
 
                   <div className="card-badges-right">

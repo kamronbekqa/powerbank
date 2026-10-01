@@ -48,10 +48,10 @@ export default function ProductViewModal({ product: rawProduct, onClose, onBuy, 
           <div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '6px' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#eff6ff', color: '#2563eb', padding: '3px 10px', borderRadius: '16px', fontSize: '0.78rem', fontWeight: '800' }}>
-                <Zap size={14} /> {t.capacityLabel || "SIG'IMI:"} {product.capacity || 'Solar Generator'}
+                <Zap size={14} /> {t.capacityLabel || "SIG'IMI:"} {product.capacity || 'Generator'}
               </span>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#ecfdf5', color: '#059669', padding: '3px 10px', borderRadius: '16px', fontSize: '0.78rem', fontWeight: '800' }}>
-                <ShieldCheck size={14} /> {t.megmeetInside || "MEGMEET INSIDE"}
+                <ShieldCheck size={14} /> {t.serviceChecked || "XIZMATGA TAYYOR"}
               </span>
               {(oldRentP || oldBuyP) && (
                 <span style={{ background: '#ef4444', color: '#fff', padding: '3px 10px', borderRadius: '16px', fontSize: '0.78rem', fontWeight: '800' }}>

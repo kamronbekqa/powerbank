@@ -2,11 +2,11 @@ import { useEffect } from 'react';
 
 const BASE_URL = 'https://voltmaxhub.uz';
 const SITE_NAME = 'VOLTMAXHUB';
-const DEFAULT_DESC = 'VOLTMAXHUB — Avtonom energiya: generatorlar va quyosh panellari. O\'zbekistondagi eng zamonaviy portativ quyosh generatorlari va quvvat stansiyalari.';
+const DEFAULT_DESC = 'VOLTMAXHUB — O\'zbekistonda benzinli, past shovqili inverter generatorlar ijarasi. Uy, ofis va tadbir uchun moslashtirilgan quvvat.';
 
 export default function usePageMeta({ title, description }) {
   useEffect(() => {
-    const fullTitle = title ? `${title} — ${SITE_NAME}` : `${SITE_NAME} — Avtonom energiya: generatorlar va quyosh panellari`;
+    const fullTitle = title ? `${title} — ${SITE_NAME}` : `${SITE_NAME} — Shovqinsiz va inverterli generatorlar ijarasi`;
     const desc = description || DEFAULT_DESC;
 
     document.title = fullTitle;
