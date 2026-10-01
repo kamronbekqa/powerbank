@@ -1,38 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Only real, standalone documents are listed here.
+
+  The catalogue, reviews and contact sections are client-side routes inside the
+  single-page app (they use #hash navigation), so they have no separate URL for
+  a crawler to fetch. Sitemaps must contain absolute, fetchable URLs; fragment
+  identifiers are ignored by Google and can cause the whole file to be rejected
+  as an invalid address.
+-->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://voltmaxhub.uz/</loc>
-    <lastmod>2026-09-30</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-10-01</lastmod>
+    <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://voltmaxhub.uz/#katalog</loc>
-    <lastmod>2026-09-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://voltmaxhub.uz/#quyosh-panellari</loc>
-    <lastmod>2026-09-30</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://voltmaxhub.uz/#sharhlar</loc>
-    <lastmod>2026-09-30</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://voltmaxhub.uz/#aloqa</loc>
-    <lastmod>2026-09-30</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
     <loc>https://voltmaxhub.uz/privacy.html</loc>
-    <lastmod>2026-09-30</lastmod>
+    <lastmod>2026-10-01</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>

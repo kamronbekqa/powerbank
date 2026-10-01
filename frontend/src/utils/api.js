@@ -28,13 +28,38 @@ export async function apiFetch(path, { method = 'GET', body, headers = {}, signa
     if (csrf) finalHeaders['x-csrf-token'] = csrf;
   }
 
-  const res = await fetch(apiUrl(path), {
+  const send = () => fetch(apiUrl(path), {
     method: verb,
     credentials: 'include',
     headers: finalHeaders,
     body: body === undefined ? undefined : JSON.stringify(body),
     signal
   });
+
+  // The CSRF cookie is short-lived. If it has expired, a mutating request is
+  // rejected with "CSRF token topilmadi" until some other request re-issues it.
+  // Fetch one quietly and retry instead of making the user reload the page.
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(verb) && !readCookie('csrf_token')) {
+    try {
+      await fetch(apiUrl('/api/health'), { credentials: 'include' });
+      const fresh = readCookie('csrf_token');
+      if (fresh) finalHeaders['x-csrf-token'] = fresh;
+    } catch { /* fall through and let the server decide */ }
+  }
+
+  let res = await send();
+
+  // One retry if the token turned out to be stale.
+  if (res.status === 403 && !['GET', 'HEAD', 'OPTIONS'].includes(verb)) {
+    try {
+      await fetch(apiUrl('/api/health'), { credentials: 'include' });
+      const fresh = readCookie('csrf_token');
+      if (fresh && fresh !== finalHeaders['x-csrf-token']) {
+        finalHeaders['x-csrf-token'] = fresh;
+        res = await send();
+      }
+    } catch { /* keep the original response */ }
+  }
 
   let data = null;
   const text = await res.text();
