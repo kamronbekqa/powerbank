@@ -4,8 +4,8 @@ import usePageMeta from '../hooks/usePageMeta';
 
 export default function HomeHero({ onGoCatalog, onGoContact, t = {} }) {
   usePageMeta({
-    title: 'Avtonom energiya: generatorlar va quyosh panellari',
-    description: 'VOLTMAXHUB — O\'zbekistondagi eng zamonaviy portativ quyosh generatorlari va quvvat stansiyalari. Ijara va sotuv.'
+    title: 'Shovqinsiz va inverterli generatorlar ijarasi',
+    description: 'VOLTMAXHUB — O\'zbekistonda benzinli, past shovqili inverter generatorlar ijarasi. Kunlik va uzoq muddatli ijara.'
   });
   // Simple Appliance Capacity Calculator State
   const [selectedAppliance, setSelectedAppliance] = useState('fridge');
@@ -30,11 +30,11 @@ export default function HomeHero({ onGoCatalog, onGoContact, t = {} }) {
         <div className="container hero-grid">
           <div>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(37, 99, 235, 0.3)', border: '1px solid rgba(59, 130, 246, 0.5)', padding: '6px 14px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: '800', color: '#60a5fa', marginBottom: '1.25rem' }}>
-              <Zap size={16} /> {t.n1Banner || "O'ZBEKISTONDA N1 QUYOSH GENERATORLARI"}
+              <Zap size={16} /> {t.n1Banner || "O'ZBEKISTONDA IJARAGA BERILADIGAN GENERATORLAR"}
             </div>
             
             <h1 style={{ fontSize: '3rem', fontWeight: '800', lineHeight: 1.15, marginBottom: '1.25rem', letterSpacing: '-1px' }}>
-              {t.homeHeroTitle || "Avtonom Energiya va Shovqinsiz Quyosh Generatorlari"}
+              {t.homeHeroTitle || "Shovqinsiz va Inverterli Generatorlar Ijarasi"}
             </h1>
 
             <p style={{ color: '#cbd5e1', fontSize: '1.15rem', lineHeight: 1.6, marginBottom: '2rem' }}>
@@ -100,7 +100,7 @@ export default function HomeHero({ onGoCatalog, onGoContact, t = {} }) {
               {t.whyVoltmaxTitle || "Nima Uchun Aynan VOLTMAXHUB Generatorlari?"}
             </h2>
             <p style={{ color: 'var(--meco-text-muted)', fontSize: '1rem' }}>
-              {t.whyVoltmaxDesc || "Eski benzin generatorlaridan voz keching. Zamonaviy, shovqinsiz va quyoshdan quvvat oluvchi stansiyalar."}
+              {t.whyVoltmaxDesc || "Ishlab chiqaruvchi MECO generatorlari — barqaror, ixcham va kichik yoqilindiq sarfi bilan. Biz ularni tozalab, texnik xizmatdan o'tkazib beramiz."}
             </p>
           </div>
 
@@ -109,7 +109,7 @@ export default function HomeHero({ onGoCatalog, onGoContact, t = {} }) {
               <div style={{ background: 'rgba(37,99,235,0.12)', color: '#2563eb', width: '50px', height: '50px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
                 <BatteryCharging size={26} />
               </div>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: '800', marginBottom: '0.5rem', color: 'var(--meco-text-main)' }}>{t.lifep04Title || "LiFePO4 Akkumulyator"}</h3>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: '800', marginBottom: '0.5rem', color: 'var(--meco-text-main)' }}>{t.lifep04Title || "Benzinli Generatorlar"}</h3>
               <p style={{ color: 'var(--meco-text-muted)', fontSize: '0.9rem', lineHeight: '1.5' }}>
                 {t.lifep04Desc || "3500+ marta zaryadlash sikliga va 10 yildan ortiq xizmat qilish muddatiga ega eng xavfsiz batareyalar."}
               </p>
@@ -119,9 +119,9 @@ export default function HomeHero({ onGoCatalog, onGoContact, t = {} }) {
               <div style={{ background: 'rgba(217,119,6,0.12)', color: '#d97706', width: '50px', height: '50px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
                 <Sun size={26} />
               </div>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: '800', marginBottom: '0.5rem', color: 'var(--meco-text-main)' }}>{t.fastSolarTitle || "Quyoshdan Tezkor Zaryad"}</h3>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: '800', marginBottom: '0.5rem', color: 'var(--meco-text-main)' }}>{t.fastSolarTitle || "Inverter Texnologiyasi"}</h3>
               <p style={{ color: 'var(--meco-text-muted)', fontSize: '0.9rem', lineHeight: '1.5' }}>
-                {t.fastSolarDesc || "Cola Solar monokristall panellari orqali 1.5 - 3 soat ichida generatorni bepul quyosh nuridan zaryadlang."}
+                {t.fastSolarDesc || "Sof sinus tokiqli chiqish — sekin ishlatiladigan qurilma uchun xavfsiz, ruhan bezak qilmaydigan quvvat."}
               </p>
             </div>
 

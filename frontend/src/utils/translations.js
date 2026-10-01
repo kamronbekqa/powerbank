@@ -15,20 +15,20 @@ export const translations = {
     themeDark: "Tungi Rejim",
 
     // Banner & Catalog
-    heroTitle: "VOLTMAXHUB Quyosh Generatorlari va Powerbank Stansiyalari",
-    heroDesc: "Har bir generator qaysi elektr jihoziga va qancha vaqtga yetishini bilib oling.",
-    searchPlaceholder: "VoltMax generator nomini yoki watt sig'imini qidirish (masalan, 1kWh, 3.6kWh)...",
+    heroTitle: "VOLTMAXHUB — Shovqinsiz va Inverterli Generatorlar Ijarasi",
+    heroDesc: "Generatorni kerakli quvvat va ijara muddatiga qarab tanlang. Benzinli, inverterli, past shovqili.",
+    searchPlaceholder: "Generator nomi yoki quvvatini qidirish (masalan, 5kW, 7kW)...",
     allGenerators: "Barcha Generatorlar",
-    models1kWh: "1kWh Modellar",
-    models2kWh: "1.8kWh & 2kWh",
-    modelsHeavy: "3.6kWh & 5.4kWh Heavy",
-    solarPanels: "Quyosh Panellari",
+    models1kWh: "2 - 3 kW Modellar",
+    models2kWh: "5 - 6 kW Modellar",
+    modelsHeavy: "8 kW va Undan Katta",
+    solarPanels: "Generatorlar",
     sotibOlish: "Sotib Olish",
     ijaragaOlish: "Ijaraga Olish",
     batafsil: "Batafsil & Jihozlar Vaqti",
     buyPrice: "Sotib olish:",
     rentPrice: "Kunlik ijara:",
-    nechaSoatgaYetadi: "NECHA SOATGA YETADI:",
+    nechaSoatgaYetadi: "QANCHA SOAT ISHLATILADI:",
     sotuvda: "Sotuvda / Ijarada",
     band: "Band",
     perDay: "UZS/kun",
@@ -40,7 +40,7 @@ export const translations = {
     specialOffer: "🔥 AKSIYA CHEGIRMA",
     specialOfferBanner: "🔥 MAXSUS AKSIYA TAKLIFI",
     capacityLabel: "SIG'IMI:",
-    megmeetInside: "MEGMEET INSIDE",
+    serviceChecked: "XIZMATGA TAYYOR",
     productSpecsTitle: "Mahsulot Xususiyati:",
     techParamsTitle: "Texnik Parametrlar & Xavfsizlik (Specification Parameters)",
     batteryChemistry: "Akkumulyator Kimyosi:",
@@ -53,13 +53,13 @@ export const translations = {
     savingsNotice: "🔥 Chegirma bilan {amount} UZS tejab qoldingiz!",
 
     // Home Hero
-    n1Banner: "O'ZBEKISTONDA N1 QUYOSH GENERATORLARI",
-    homeHeroTitle: "Avtonom Energiya va Shovqinsiz Quyosh Generatorlari",
-    homeHeroDesc: "Chiroq o'chganida xonadoningiz, tadbiringiz yoki qurilish ob'yektingizni uzluksiz elektr energiyasi bilan ta'minlang. Naqd sotib oling yoki kunlik ijaraga oling!",
+    n1Banner: "O'ZBEKISTONDA IJARAGA BERILADIGAN GENERATORLAR",
+    homeHeroTitle: "Shovqinsiz va Inverterli Generatorlar Ijarasi",
+    homeHeroDesc: "Benzin bilan ishlaydigan, past shovqili inverterli generatorlar. Xonadoningiz, ofis, tadbir yoki qurilish ob'yektida ishonchli quvvat — ijarangiz muddati bo'yicha moslashtirilgan.",
     catalogBtn: "Generatorlar Katalogi",
     contactBtn: "Bizga Bog'lanish",
-    whichGeneratorTitle: "Qaysi Generator Sizga Mos?",
-    whichGeneratorDesc: "Elektr jihozingiz turini tanlang, tizim sizga kerakli quvvat va VoltMax modelini tavsiya etadi:",
+    whichGeneratorTitle: "Qaysi Generator Ijaraga Kerak?",
+    whichGeneratorDesc: "Elektr jihozingiz turini tanlang, tizim sizga kerakli quvvat va mos inverterli generator modelini tavsiya etadi:",
     usagePurpose: "Foydalanish Maqsadi:",
     optFridge: "Uy muzlatgichi + TV + Wi-Fi",
     optAc: "Konditsioner + Xonadon majmuasi",
@@ -67,16 +67,16 @@ export const translations = {
     optCamping: "Kemping / Sayr / Dronlar",
     estPower: "Taxminiy sarf quvvati:",
     recommendedModel: "Tavsiya etilgan model:",
-    whyMecoTitle: "Nima Uchun Aynan VOLTMAXHUB Generatorlari?",
-    whyMecoDesc: "Eski benzin generatorlaridan voz keching. Zamonaviy, shovqinsiz va quyoshdan quvvat oluvchi stansiyalar.",
-    lifep04Title: "LiFePO4 Akkumulyator",
-    lifep04Desc: "3500+ marta zaryadlash sikliga va 10 yildan ortiq xizmat qilish muddatiga ega eng xavfsiz batareyalar.",
-    fastSolarTitle: "Quyoshdan Tezkor Zaryad",
-    fastSolarDesc: "Cola Solar monokristall panellari orqali 1.5 - 3 soat ichida generatorni bepul quyosh nuridan zaryadlang.",
-    officialWarrantyTitle: "Rasmiy 6 Oylik Kafolat",
-    officialWarrantyDesc: "O'zbekiston bo'yicha rasmiy servis markazi va 100% kafolatlangan texnik yordam.",
-    fastKycTitle: "Tezkor Online KYC Ijara",
-    fastKycDesc: "Garovsiz va ortiqcha hujjatlarsiz Pasport va PINFL orqali 5 minutda kunlik ijarani rasmiylashtiring.",
+    whyMecoTitle: "Nima Uchun VOLTMAXHUB Ijarasi?",
+    whyMecoDesc: "Ishlab chiqaruvchi MECO generatorlari — barqaror, ixcham va kichik yoqilindiq sarfi bilan. Biz ularni tozalab, texnik xizmatdan o'tkazib beramiz.",
+    lifep04Title: "Benzinli Generatorlar",
+    lifep04Desc: "Kuchli benzin dvigateli, uzun muddatli ishlash uchun mo'ljallangan generatorlar. Uzoq muddatli ijara uchun eng ishonchli tanlov.",
+    fastSolarTitle: "Inverter Texnologiyasi",
+    fastSolarDesc: "Sof sinus tokiqli chiqish — sekin ishlatiladigan qurilma (kompyuter, televizor, muzlatgich) uchun xavfsiz, ruhan bezak qilmaydigan quvvat.",
+    officialWarrantyTitle: "Past Shovqin Darajasi",
+    officialWarrantyDesc: "Sovg'a, dam olish yoki kechqurun ishlari uchun hamroh shovqsiz — qo'shnilar va oila a'jalariga xalq bo'lmaydi.",
+    fastKycTitle: "Moslashuvchan Ijara Muddatlari",
+    fastKycDesc: "Bir kunlik ijaradan uzoq muddatli shartnomagacha. Kengaytirish yoki muddatni o'zgartirish shartnomaga qo'shimcha qilinsa mumkin.",
 
     // Product Modal & Usage
     applianceTitle: "Elektr Jihozlari Qancha Vaqtga Yetadi?",
@@ -141,14 +141,14 @@ export const translations = {
     themeDark: "Тёмная тема",
 
     // Banner & Catalog
-    heroTitle: "Солнечные Генераторы и Портативные Станции VOLTMAXHUB",
+    heroTitle: "VOLTMAXHUB — Аренда Тихих и Инверторных Генераторов",
     heroDesc: "Узнайте, для каких приборов и на сколько часов хватит каждого генератора.",
     searchPlaceholder: "Поиск генератора VoltMax или мощности в Ваттах (например, 1kWh, 3.6kWh)...",
     allGenerators: "Все Генераторы",
     models1kWh: "Модели 1kWh",
     models2kWh: "1.8kWh и 2kWh",
     modelsHeavy: "3.6kWh и 5.4kWh Heavy",
-    solarPanels: "Солнечные Панели",
+    solarPanels: "Генераторы",
     sotibOlish: "Купить",
     ijaragaOlish: "Арендовать",
     batafsil: "Подробнее и Время работы",
@@ -166,7 +166,7 @@ export const translations = {
     specialOffer: "🔥 АКЦИЯ СКИДКА",
     specialOfferBanner: "🔥 СПЕЦИАЛЬНОЕ АКЦИОННОЕ ПРЕДЛОЖЕНИЕ",
     capacityLabel: "ЕМКОСТЬ:",
-    megmeetInside: "MEGMEET INSIDE",
+    serviceChecked: "XIZMATGA TAYYOR",
     productSpecsTitle: "Характеристики Товара:",
     techParamsTitle: "Технические Параметры и Безопасность",
     batteryChemistry: "Химия Аккумулятора:",
@@ -179,9 +179,9 @@ export const translations = {
     savingsNotice: "🔥 Вы сэкономили {amount} сум по скидке!",
 
     // Home Hero
-    n1Banner: "N1 СОЛНЕЧНЫЕ ГЕНЕРАТОРЫ В УЗБЕКИСТАНЕ",
-    homeHeroTitle: "Автономная Энергия и Бесшумные Солнечные Генераторы",
-    homeHeroDesc: "Обеспечьте бесперебойным электричеством ваш дом, мероприятие или стройку при отключении света. Покупайте или арендуйте посуточно!",
+    n1Banner: "ГЕНЕРАТОРЫ В АРЕНДУ ПО УЗБЕКИСТАНУ",
+    homeHeroTitle: "Аренда Тихих и Инверторных Генераторов",
+    homeHeroDesc: "Бензиновые генераторы с низким уровнем шума. Дом, офис, мероприятие или стройка — подберём мощность под срок аренды.",
     catalogBtn: "Каталог Генераторов",
     contactBtn: "Связаться с Нами",
     whichGeneratorTitle: "Какой Генератор Вам Подходит?",
@@ -193,16 +193,16 @@ export const translations = {
     optCamping: "Кемпинг / Пикник / Дроны",
     estPower: "Примерная мощность:",
     recommendedModel: "Рекомендуемая модель:",
-    whyMecoTitle: "Почему Именно Генераторы VOLTMAXHUB?",
-    whyMecoDesc: "Откажитесь от старых бензиновых генераторов. Современные, бесшумные станции на солнечной энергии.",
-    lifep04Title: "LiFePO4 Аккумулятор",
-    lifep04Desc: "Самые безопасные батареи с ресурсом 3500+ циклов зарядки и сроком службы более 10 лет.",
-    fastSolarTitle: "Быстрая Зарядка от Солнца",
-    fastSolarDesc: "Бесплатная зарядка генератора от солнца за 1.5 - 3 часа с помощью монокристаллических панелей Cola Solar.",
-    officialWarrantyTitle: "Официальная Гарантия 6 Месяцев",
-    officialWarrantyDesc: "Официальный сервисный центр по всему Узбекистану и 100% гарантированная техподдержка.",
-    fastKycTitle: "Быстрая Онлайн KYC Аренда",
-    fastKycDesc: "Оформите посуточную аренду за 5 минут без залога по паспорту и ПИНФЛ.",
+    whyMecoTitle: "Почему Аренда VOLTMAXHUB?",
+    whyMecoDesc: "Генераторы MECO — надёжные, компактные и с низким расходом топлива. Мы чистим и обслуживаем их перед выдачей.",
+    lifep04Title: "Бензиновые Генераторы",
+    lifep04Desc: "Мощный бензиновый двигатель, рассчитанный на долгую непрерывную работу. Надёжный выбор для длительной аренды.",
+    fastSolarTitle: "Инверторная Технология",
+    fastSolarDesc: "Чистый синус на выходе — безопасное питание для чувствительной техники: компьютеров, телевизоров, холодильников.",
+    officialWarrantyTitle: "Низкий Уровень Шума",
+    officialWarrantyDesc: "Для свадеб, отдыха и вечерних работ — тихий генератор не потревожит соседей и домочадцев.",
+    fastKycTitle: "Гибкие Сроки Аренды",
+    fastKycDesc: "От одних суток до долгосрочного договора. Продление или изменение срока — дополнительным соглашением.",
 
     // Product Modal & Usage
     applianceTitle: "На сколько хватит работы электроприборов?",
@@ -268,14 +268,14 @@ export const translations = {
 
     // Banner & Catalog
     // Banner & Catalog
-    heroTitle: "VOLTMAXHUB Solar Power Generators & Power Stations",
+    heroTitle: "VOLTMAXHUB — Аренда Тихих и Инверторных Генераторов",
     heroDesc: "Discover estimated appliance runtimes and wattages for every generator model.",
     searchPlaceholder: "Search VoltMax generator or capacity in Watts (e.g., 1kWh, 3.6kWh)...",
     allGenerators: "All Generators",
     models1kWh: "1kWh Models",
     models2kWh: "1.8kWh & 2kWh",
     modelsHeavy: "3.6kWh & 5.4kWh Heavy",
-    solarPanels: "Solar Panels",
+    solarPanels: "Generators",
     sotibOlish: "Direct Buy",
     ijaragaOlish: "Rent Daily",
     batafsil: "Details & Appliance Runtimes",
@@ -293,7 +293,7 @@ export const translations = {
     specialOffer: "🔥 SPECIAL OFFER",
     specialOfferBanner: "🔥 SPECIAL PROMOTIONAL OFFER",
     capacityLabel: "CAPACITY:",
-    megmeetInside: "MEGMEET INSIDE",
+    serviceChecked: "XIZMATGA TAYYOR",
     productSpecsTitle: "Product Specifications:",
     techParamsTitle: "Technical Parameters & Protection",
     batteryChemistry: "Battery Chemistry:",
@@ -306,8 +306,8 @@ export const translations = {
     savingsNotice: "🔥 You saved {amount} UZS with discount!",
 
     // Home Hero
-    n1Banner: "N1 SOLAR GENERATORS IN UZBEKISTAN",
-    homeHeroTitle: "Autonomous Power & Silent Solar Generators",
+    n1Banner: "GENERATORS FOR RENT IN UZBEKISTAN",
+    homeHeroTitle: "Quiet & Inverter Generator Rental",
     homeHeroDesc: "Power your house, event, or site during outages with reliable electricity. Buy directly or rent daily!",
     catalogBtn: "Generators Catalog",
     contactBtn: "Contact Us",
@@ -321,15 +321,15 @@ export const translations = {
     estPower: "Estimated Power:",
     recommendedModel: "Recommended Model:",
     whyMecoTitle: "Why Choose VOLTMAXHUB Generators?",
-    whyMecoDesc: "Ditch old petrol generators. Modern, noiseless power stations charged by solar power.",
-    lifep04Title: "LiFePO4 Battery",
+    whyMecoDesc: "MECO generators — dependable, compact and fuel-efficient. We clean and service every unit before handover.",
+    lifep04Title: "Petrol Generators",
     lifep04Desc: "Safest batteries with 3500+ recharge cycles and over 10 years of service life.",
-    fastSolarTitle: "Fast Solar Charging",
-    fastSolarDesc: "Charge your generator for free from the sun in 1.5 - 3 hours via Cola Solar monocrystalline panels.",
-    officialWarrantyTitle: "Official 6 Month Warranty",
-    officialWarrantyDesc: "Official service center across Uzbekistan with 100% guaranteed technical support.",
-    fastKycTitle: "Fast Online KYC Rental",
-    fastKycDesc: "Complete daily rental in 5 minutes with Passport & PINFL with zero deposit.",
+    fastSolarTitle: "Inverter Technology",
+    fastSolarDesc: "Pure sine-wave output — safe power for sensitive electronics: laptops, TVs and fridges.",
+    officialWarrantyTitle: "Low Noise Level",
+    officialWarrantyDesc: "Built for weddings, rest days and evening work — quiet enough not to disturb neighbours or the household.",
+    fastKycTitle: "Flexible Rental Terms",
+    fastKycDesc: "From a single day to a long-term contract. Extend or change the term with an addendum.",
 
     // Product Modal & Usage
     applianceTitle: "Appliance Estimated Runtimes",
@@ -387,47 +387,43 @@ export function translateProduct(product, lang = 'UZ') {
   let translatedTitle = pTitle;
   let translatedDesc = product.description;
 
-  if (lang === 'RU') {
-    if (pTitle.includes('320Wh')) {
-      translatedDesc = 'Компактный солнечный повербанк MEGMEET INSIDE 320Wh LiFePO4 на 8000+ циклов. Type-C 100W PD max, 150W DC, солнечный вход MPPT 100W. Вес 2.8 кг (185*185*91мм).';
-    } else if (pTitle.includes('1kWh Pro')) {
-      translatedDesc = 'Профессиональная модель 1kWh с функцией быстрой зарядки и усиленным инвертором.';
-    } else if (pTitle.includes('1kWh')) {
-      translatedDesc = 'Солнечный генератор MEGMEET INSIDE 1004.8Wh LiFePO4 на 8000+ циклов. Чистый синус AC порт, сетевая зарядка 350W и солнечный вход 200W. Вес 8.9 кг (257*210*208.5мм).';
-    } else if (pTitle.includes('1.8kWh')) {
-      translatedDesc = 'Универсальный источник питания для квартир, кемпинга и строительного оборудования.';
-    } else if (pTitle.includes('2kWh')) {
-      translatedDesc = 'Мощная электростанция с LiFePO4 аккумулятором и ресурсом 3500+ циклов.';
-    } else if (pTitle.includes('3.6kWh Pro')) {
-      translatedDesc = 'Профессиональная энергосистема мощностью 3.6kW непрерывной мощности для промышленных целей.';
-    } else if (pTitle.includes('3.6kWh')) {
-      translatedDesc = 'Мощный солнечный генератор для больших объектов и домов. Тянет кондиционер и водяной насос.';
-    } else if (pTitle.includes('5.4kWh')) {
-      translatedDesc = 'Самая мощная электростанция в линейке VOLTMAXHUB. Полностью автономное энергоснабжение.';
-    } else if (pTitle.includes('Cola Solar')) {
-      translatedDesc = 'Комплект монокристаллических солнечных панелей 1000W. Для быстрой зарядки станций VOLTMAXHUB от солнца.';
+  // Copy is derived from real product data. We never invent a brand/model or
+  // claim (e.g. a different brand name) that the inventory record does not match.
+  const cap = String(product.capacity || '').trim();
+  const isPanel = /panel|solar|\u041f\u0430\u043d\u0435\u043b/i.test(pTitle);
+  const copy = {
+    RU: {
+      small: `Компактный портативный генератор ${cap || 'малой мощности'}. Компактные размеры, низкий уровень шума, подходит для ноутбуков, телевизоров и освещения.`,
+      mid: `Универсальный источник питания ${cap || 'средней мощности'} для квартиры, дачи и строительного оборудования.`,
+      large: `Мощный генератор ${cap || 'высокой мощности'} для больших объектов и домов. Тянет кондиционер и водяной насос.`,
+      pro: `Профессиональная модель ${cap || ''} с усиленным инвертором для профессиональной нагрузки.`,
+      panel: `Солнечная панель ${cap || ''} для заряда портативных станций VOLTMAXHUB.`
+    },
+    EN: {
+      small: `Compact portable generator ${cap || 'small output'}. Quiet and light — ideal for laptops, TVs and lighting.`,
+      mid: `Universal power source ${cap || 'mid output'} for apartments, country houses and construction equipment.`,
+      large: `High-power generator ${cap || 'high output'} for large homes and properties. Runs an air conditioner and a water pump.`,
+      pro: `Professional model ${cap || ''} with an upgraded inverter for demanding loads.`,
+      panel: `Solar panel ${cap || ''} for charging VOLTMAXHUB portable power stations.`
     }
-  } else if (lang === 'EN') {
-    if (pTitle.includes('320Wh')) {
-      translatedDesc = 'Compact MEGMEET INSIDE 320Wh LiFePO4 8000+ cycles solar power bank. Type-C 100W PD max, 150W DC, MPPT 100W solar input. Weight 2.8 kg (185*185*91mm).';
-    } else if (pTitle.includes('1kWh Pro')) {
-      translatedDesc = 'Professional 1kWh model with fast charging function and upgraded inverter.';
-    } else if (pTitle.includes('1kWh')) {
-      translatedDesc = 'MEGMEET INSIDE 1004.8Wh LiFePO4 8000+ cycles solar generator. Pure sine-wave AC port, 350W grid AC charging and 200W solar PV input. Weight 8.9 kg (257*210*208.5mm).';
-    } else if (pTitle.includes('1.8kWh')) {
-      translatedDesc = 'Universal power source for home backup, camping, and construction equipment.';
-    } else if (pTitle.includes('2kWh')) {
-      translatedDesc = 'Powerful power station with LiFePO4 battery and 3500+ cycle lifespan.';
-    } else if (pTitle.includes('3.6kWh Pro')) {
-      translatedDesc = 'Professional energy system providing 3.6kW continuous power for industrial & commercial use.';
-    } else if (pTitle.includes('3.6kWh')) {
-      translatedDesc = 'High-power solar generator for large properties and houses. Runs air conditioner and water pump.';
-    } else if (pTitle.includes('5.4kWh')) {
-      translatedDesc = 'The highest capacity power station in the VOLTMAXHUB line. Fully autonomous power supply.';
-    } else if (pTitle.includes('Cola Solar')) {
-      translatedDesc = '1000W monocrystalline solar panel kit. Designed for fast solar charging of VOLTMAXHUB power stations.';
+  };
+
+  if (lang === 'RU' || lang === 'EN') {
+    const C = copy[lang];
+    const wh = parseInt(cap.replace(/[^\d]/g, ''), 10);
+    if (isPanel) {
+      translatedDesc = C.panel;
+    } else if (/pro/i.test(pTitle)) {
+      translatedDesc = C.pro;
+    } else if (Number.isNaN(wh) || wh >= 3600) {
+      translatedDesc = C.large;
+    } else if (wh >= 1800) {
+      translatedDesc = C.mid;
+    } else {
+      translatedDesc = C.small;
     }
   }
+
 
   // Translate appliance usage specs array
   let specs = Array.isArray(product.usageSpecs) ? product.usageSpecs : [];
@@ -466,7 +462,7 @@ export function translateProduct(product, lang = 'UZ') {
         .replace(/Butun xonadon/g, 'Вся квартира')
         .replace(/Elektromobil/g, 'Электромобиль')
         .replace(/Zaryadlash/g, 'Зарядка')
-        .replace(/Quyoshdagi quvvat/g, 'Солнечная мощность')
+        .replace(/Quyoshdagi quvvat/g, 'Мощность')
         .replace(/Projectors/g, 'Проекторы')
         .replace(/Hairdryer/g, 'Фен')
         .replace(/Pet Feeder/g, 'Кормушка для питомцев');
@@ -501,7 +497,7 @@ export function translateProduct(product, lang = 'UZ') {
         .replace(/Butun xonadon/g, 'Entire Apartment')
         .replace(/Elektromobil/g, 'Electric Vehicle')
         .replace(/Zaryadlash/g, 'Charging')
-        .replace(/Quyoshdagi quvvat/g, 'Solar Power')
+        .replace(/Quyoshdagi quvvat/g, 'Output power')
         .replace(/Projectors/g, 'Projector')
         .replace(/Hairdryer/g, 'Hairdryer')
         .replace(/Pet Feeder/g, 'Pet Feeder');

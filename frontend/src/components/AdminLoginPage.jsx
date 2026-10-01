@@ -45,9 +45,9 @@ export default function AdminLoginPage({ onLoginSuccess, onGoBack, lang = 'UZ', 
   };
 
   const label = {
-    UZ: { title: 'Admin Paneliga Kirish', subtitle: 'VOLTMAXHUB Solar CRM boshqaruv tizimi', loginLbl: 'Admin Login', passLbl: 'Admin Paroli', loginBtn: 'Tizimga Kirish', goBack: '← Asosiy sahifaga qaytish' },
-    RU: { title: 'Вход в Панель Администратора', subtitle: 'Система управления VOLTMAXHUB Solar CRM', loginLbl: 'Логин Админа', passLbl: 'Пароль Админа', loginBtn: 'Войти', goBack: '← Вернуться на главную' },
-    EN: { title: 'Admin Panel Login', subtitle: 'VOLTMAXHUB Solar CRM Management System', loginLbl: 'Admin Login', passLbl: 'Admin Password', loginBtn: 'Log In', goBack: '← Back to Homepage' }
+    UZ: { title: 'Admin Paneliga Kirish', subtitle: 'VOLTMAXHUB generatorlar ijarasi — boshqaruv tizimi', loginLbl: 'Admin Login', passLbl: 'Admin Paroli', loginBtn: 'Tizimga Kirish', goBack: '← Asosiy sahifaga qaytish' },
+    RU: { title: 'Вход в Панель Администратора', subtitle: 'Система управления арендой генераторов VOLTMAXHUB', loginLbl: 'Логин Админа', passLbl: 'Пароль Админа', loginBtn: 'Войти', goBack: '← Вернуться на главную' },
+    EN: { title: 'Admin Panel Login', subtitle: 'VOLTMAXHUB Generator Rental Management System', loginLbl: 'Admin Login', passLbl: 'Admin Password', loginBtn: 'Log In', goBack: '← Back to Homepage' }
   }[lang] || label?.UZ;
 
   return (

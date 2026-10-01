@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Send, Phone, Mail, Globe, Eye, Zap, CheckCircle, AlertTriangle, X, Info, Heart } from 'lucide-react';
+import { Send, Phone, Mail, Globe, Zap, CheckCircle, AlertTriangle, X, Info, Heart, ShoppingCart } from 'lucide-react';
+import CartPanel from './components/CartPanel';
 
 const InstagramIcon = ({ size = 16, color = 'currentColor' }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -12,7 +13,7 @@ const InstagramIcon = ({ size = 16, color = 'currentColor' }) => (
 import Navbar from './components/Navbar';
 import HomeHero from './components/HomeHero';
 import Catalog from './components/Catalog';
-import SolarPanelsPage from './components/SolarPanelsPage';
+import GeneratorRentalPage from './components/GeneratorRentalPage';
 import ReviewsPage from './components/ReviewsPage';
 import ContactPage from './components/ContactPage';
 import ProductViewModal from './components/ProductViewModal';
@@ -24,7 +25,7 @@ import AdminCRM from './components/AdminCRM';
 import AdminLoginPage from './components/AdminLoginPage';
 import WishlistPanel from './components/WishlistPanel';
 import { translations } from './utils/translations';
-import { apiUrl } from './utils/api';
+import { apiUrl, apiFetch } from './utils/api';
 import VoltMaxLogo from './components/VoltMaxLogo';
 
 
@@ -58,9 +59,9 @@ export default function App() {
   useEffect(() => {
     const verifySession = async () => {
       try {
-        const res = await fetch(apiUrl('/api/auth/me'), { credentials: 'include' });
-        if (res.ok) {
-          const data = await res.json();
+        const data0 = await apiFetch('/api/auth/me').catch(() => ({ success: false }));
+        {
+          const data = data0;
           if (data.success && data.user) {
             setUser(data.user);
             // If admin, ensure they land on admin-dashboard
@@ -116,6 +117,15 @@ export default function App() {
   const [showKYCModal, setShowKYCModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showWishlist, setShowWishlist] = useState(false);
+  const [showCart, setShowCart] = useState(false);
+  const [loginPrompt, setLoginPrompt] = useState(null);
+  // Cart: guests persist in localStorage, signed-in users in the DB (CartItem).
+  const [cart, setCart] = useState(() => {
+    try {
+      const saved = localStorage.getItem('voltmaxhub_cart');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
 
   // Wishlist / Cart state (persisted in localStorage)
   const [wishlist, setWishlist] = useState(() => {
@@ -129,7 +139,44 @@ export default function App() {
     try { localStorage.setItem('voltmaxhub_wishlist', JSON.stringify(wishlist)); } catch {}
   }, [wishlist]);
 
+  // Persist the guest cart locally; for a signed-in user the server is the
+  // source of truth, so we skip local writes to avoid fighting it.
+  useEffect(() => {
+    if (user) return;
+    try { localStorage.setItem('voltmaxhub_cart', JSON.stringify(cart)); } catch {}
+  }, [cart, user]);
+
+  // On login, hydrate the cart and wishlist from the server.
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      try {
+        const remote = await apiFetch('/api/cart');
+        if (Array.isArray(remote) && remote.length) {
+          setCart(remote.map(i => ({ id: i.id, productId: i.productId, product: i.product, quantity: i.quantity, type: i.type })));
+        } else {
+          // Nothing saved server-side: promote the guest cart.
+          for (const item of cart) {
+            await apiFetch('/api/cart', { method: 'POST', body: { productId: item.productId, quantity: item.quantity, type: item.type } });
+          }
+        }
+        const remoteWish = await apiFetch('/api/wishlist');
+        if (Array.isArray(remoteWish)) {
+          setWishlist(remoteWish.map(i => ({ ...i.product, tag: 'favorite', wishlistId: i.id })));
+        }
+      } catch (err) {
+        console.error('Cart/wishlist hydrate error:', err);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  // Wishlist is for signed-in users only (task 6): guests are sent to login.
   const handleAddToWishlist = (product, tag = 'favorite') => {
+    if (!user) {
+      setLoginPrompt({ product, action: 'wishlist' });
+      return;
+    }
     setWishlist(prev => {
       const exists = prev.find(i => i.id === product.id);
       if (exists) {
@@ -138,65 +185,125 @@ export default function App() {
       }
       return [...prev, { ...product, tag, addedAt: new Date().toISOString() }];
     });
+    apiFetch('/api/wishlist', { method: 'POST', body: { productId: product.id } })
+      .catch(err => console.error('Wishlist sync error:', err));
     showToast(
       tag === 'planned'
         ? (lang === 'RU' ? 'Добавлено в планы аренды!' : lang === 'EN' ? 'Added to rent plan!' : 'Ijara rejasiga qo\'shildi!')
-        : (lang === 'RU' ? 'Добавлено в избранное!' : lang === 'EN' ? 'Added to favorites!' : 'Savatga qo\'shildi!'),
+        : (lang === 'RU' ? 'Добавлено в избранное!' : lang === 'EN' ? 'Added to favorites!' : 'Yoqtirganlarga qo\'shildi!'),
       'success'
     );
   };
 
   const handleRemoveFromWishlist = (productId) => {
     setWishlist(prev => prev.filter(i => i.id !== productId));
-    showToast(lang === 'RU' ? 'Удалено из корзины' : lang === 'EN' ? 'Removed from wishlist' : 'Savatdan o\'chirildi', 'info');
+    apiFetch(`/api/wishlist/${productId}`, { method: 'DELETE' })
+      .catch(err => console.error('Wishlist remove error:', err));
+    showToast(lang === 'RU' ? 'Удалено из избранного' : lang === 'EN' ? 'Removed from wishlist' : 'Yoqtirganlardan o\'chirildi', 'info');
   };
 
   const handleClearWishlist = () => {
+    for (const item of wishlist) {
+      apiFetch(`/api/wishlist/${item.id}`, { method: 'DELETE' }).catch(() => {});
+    }
     setWishlist([]);
-    showToast(lang === 'RU' ? 'Корзина очищена' : lang === 'EN' ? 'Wishlist cleared' : 'Savat tozalandi', 'info');
+    showToast(lang === 'RU' ? 'Избранное очищено' : lang === 'EN' ? 'Wishlist cleared' : 'Yoqtirganlar tozalandi', 'info');
+  };
+
+  // ── Cart ────────────────────────────────────────────────────────────────
+  const handleAddToCart = (product, type = 'RENT') => {
+    setCart(prev => {
+      const idx = prev.findIndex(i => i.productId === product.id && i.type === type);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], quantity: (Number(next[idx].quantity) || 1) + 1 };
+        return next;
+      }
+      return [...prev, {
+        id: product.id, productId: product.id, product,
+        quantity: 1, type, addedAt: new Date().toISOString()
+      }];
+    });
+    if (user) {
+      apiFetch('/api/cart', { method: 'POST', body: { productId: product.id, quantity: 1, type } })
+        .catch(err => console.error('Cart sync error:', err));
+    }
+    showToast(
+      lang === 'RU' ? 'Добавлено в корзину!' : lang === 'EN' ? 'Added to cart!' : 'Savatga qo\'shildi!',
+      'success'
+    );
+    setShowCart(true);
+  };
+
+  const handleCartQuantity = async (item, quantity) => {
+    setCart(prev => prev.map(i => i.id === item.id ? { ...i, quantity } : i));
+    if (user) {
+      try { await apiFetch(`/api/cart/${item.id}`, { method: 'PATCH', body: { quantity } }); }
+      catch (err) { console.error('Cart qty error:', err); }
+    }
+  };
+
+  const handleRemoveFromCart = async (item) => {
+    if (item === null) {
+      // Clear the whole cart.
+      for (const i of cart) {
+        if (user) apiFetch(`/api/cart/${i.id}`, { method: 'DELETE' }).catch(() => {});
+      }
+      setCart([]);
+      showToast(lang === 'RU' ? 'Корзина очищена' : lang === 'EN' ? 'Cart cleared' : 'Savat tozalandi', 'info');
+      return;
+    }
+    setCart(prev => prev.filter(i => i.id !== item.id));
+    if (user) {
+      apiFetch(`/api/cart/${item.id}`, { method: 'DELETE' }).catch(err => console.error('Cart remove error:', err));
+    }
+    showToast(lang === 'RU' ? 'Удалено' : lang === 'EN' ? 'Removed' : 'O\'chirildi', 'info');
+  };
+
+  const handleCartCheckout = () => {
+    setShowCart(false);
+    setActiveTab('catalog');
+    showToast(
+      lang === 'RU' ? 'Выберите товар для оформления' : lang === 'EN' ? 'Pick a product to place your order' : 'Buyurtma berish uchun mahsulotni tanlang',
+      'info'
+    );
   };
 
   // Fetch data from backend API Server & sync user with Database
   const loadData = () => {
     setDataLoading(true);
-    fetch(apiUrl('/api/products'))
-      .then(res => res.json())
+    apiFetch('/api/products')
       .then(data => {
         if (Array.isArray(data)) setProducts(data);
       })
       .catch(err => console.error('Products fetch error:', err))
       .finally(() => setDataLoading(false));
 
-    fetch(apiUrl('/api/orders'))
-      .then(res => res.json())
+    apiFetch('/api/orders')
       .then(data => {
         if (Array.isArray(data)) setOrders(data);
       })
       .catch(err => console.error('Orders fetch error:', err));
 
-    fetch(apiUrl('/api/verifications'))
-      .then(res => res.json())
+    apiFetch('/api/verifications')
       .then(data => {
         if (Array.isArray(data)) setVerifications(data);
       })
       .catch(err => console.error('Verifications fetch error:', err));
 
-    fetch(apiUrl('/api/reviews'))
-      .then(res => res.json())
+    apiFetch('/api/reviews')
       .then(data => {
         if (Array.isArray(data)) setReviews(data);
       })
       .catch(err => console.error('Reviews fetch error:', err));
 
-    fetch(apiUrl('/api/contacts'))
-      .then(res => res.json())
+    apiFetch('/api/contacts')
       .then(data => {
         if (Array.isArray(data)) setContactMessages(data);
       })
       .catch(err => console.error('Contacts fetch error:', err));
 
-    fetch(apiUrl('/api/users'))
-      .then(res => res.json())
+    apiFetch('/api/users')
       .then(data => {
         if (Array.isArray(data)) {
           setUsers(data);
@@ -222,44 +329,39 @@ export default function App() {
       })
       .catch(err => console.error('Users fetch error:', err));
 
-    fetch(apiUrl('/api/settings'))
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.id) setSiteSettings(data);
-      })
-      .catch(err => console.error('Settings fetch error:', err));
+    // Admins additionally need admin-only fields (visitCount); anonymous
+    // visitors only ever receive the public subset.
+    const settingsUrl = user?.role === 'ADMIN' ? '/api/settings' : '/api/settings/public';
+    apiFetch(settingsUrl)
+      .then(data => { if (data) setSiteSettings(prev => ({ ...prev, ...data })); })
+      .catch(() => {});
   };
 
+  // Re-fetch when the role changes so an admin picks up the admin-only fields
+  // (visitCount) that anonymous visitors never receive.
   useEffect(() => {
     loadData();
-    // Register visitor count once per browser session
-    if (!sessionStorage.getItem('voltmaxhub_visited')) {
-      sessionStorage.setItem('voltmaxhub_visited', 'true');
-      fetch(apiUrl('/api/stats/visit'), { method: 'POST' })
-        .then(res => res.json())
-        .then(data => {
-          if (data.visitCount) {
-            setSiteSettings(prev => ({ ...prev, visitCount: data.visitCount }));
-          }
-        })
-        .catch(err => console.error('Visit stat increment error:', err));
-    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.role]);
+
+  // Count one visit per browser session (the project's existing rule).
+  useEffect(() => {
+    if (sessionStorage.getItem('voltmaxhub_visited')) return;
+    sessionStorage.setItem('voltmaxhub_visited', 'true');
+    apiFetch('/api/stats/visit', { method: 'POST' })
+      .then(data => {
+        if (data && typeof data.visitCount === 'number') {
+          setSiteSettings(prev => ({ ...prev, visitCount: data.visitCount }));
+        }
+      })
+      .catch(err => console.error('Visit stat increment error:', err));
   }, []);
 
-  const handleSaveSettings = async (newSettings) => {
-    try {
-      const res = await fetch(apiUrl('/api/settings'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newSettings)
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setSiteSettings(data);
-        showToast(lang === 'RU' ? 'Настройки успешно сохранены!' : lang === 'EN' ? 'Settings saved successfully!' : 'Tizim sozlamalari muvaffaqiyatli saqlandi!');
-      }
-    } catch (err) {
-      showToast('Sozlamalarni saqlashda xatolik: ' + err.message, 'error');
+  // Each settings card saves itself through its own endpoint and passes the
+  // authoritative server state back, so the UI never drifts from the database.
+  const handleSaveSettings = (serverState) => {
+    if (serverState && typeof serverState === 'object') {
+      setSiteSettings(prev => ({ ...prev, ...serverState }));
     }
   };
 
@@ -291,7 +393,7 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
-      await fetch(apiUrl('/api/auth/logout'), { method: 'POST', credentials: 'include' });
+      await apiFetch('/api/auth/logout', { method: 'POST' });
     } catch (err) {
       console.error('Logout request failed:', err);
     }
@@ -308,14 +410,11 @@ export default function App() {
 
   const handleAddReview = async (reviewData) => {
     try {
-      const res = await fetch(apiUrl('/api/reviews'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(reviewData)
-      });
-      if (res.ok) {
-        loadData();
-      }
+      await apiFetch('/api/reviews', {
+  method: 'POST',
+  body: reviewData
+});
+      loadData();
     } catch (err) {
       console.error('Review submit error:', err);
     }
@@ -323,14 +422,11 @@ export default function App() {
 
   const handleSendMessage = async (contactData) => {
     try {
-      const res = await fetch(apiUrl('/api/contacts'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(contactData)
-      });
-      if (res.ok) {
-        loadData();
-      }
+      await apiFetch('/api/contacts', {
+  method: 'POST',
+  body: contactData
+});
+      loadData();
     } catch (err) {
       console.error('Contact send error:', err);
     }
@@ -338,18 +434,14 @@ export default function App() {
 
   const handleDeleteContactMessage = async (id) => {
     try {
-      const res = await fetch(apiUrl(`/api/contacts/${id}`), {
-        method: 'DELETE'
-      });
-      if (res.ok) {
-        loadData();
-        showToast(
-          lang === 'RU' ? 'Сообщение удалено' :
-          lang === 'EN' ? 'Message deleted' :
-          'Murojaat o\'chirildi',
-          'info'
-        );
-      }
+      await apiFetch(`/api/contacts/${id}`, { method: 'DELETE' });
+      loadData();
+      showToast(
+        lang === 'RU' ? 'Сообщение удалено' :
+        lang === 'EN' ? 'Message deleted' :
+        'Murojaat o\'chirildi',
+        'info'
+      );
     } catch (err) {
       console.error('Contact delete error:', err);
     }
@@ -357,16 +449,10 @@ export default function App() {
 
   const handleBookOrder = async (orderPayload) => {
     try {
-      const res = await fetch(apiUrl('/api/orders'), {
+      const data = await apiFetch('/api/orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(orderPayload)
+        body: orderPayload
       });
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Buyurtma yaratishda xatolik');
-      }
 
       if (orderPayload.type === 'BUY') {
         const providerEndpoint = orderPayload.paymentProvider === 'PAYME' ? apiUrl('/api/checkout/payme') : apiUrl('/api/checkout/click');
@@ -399,21 +485,16 @@ export default function App() {
 
   const handleUpdateUserAvatar = async (avatarUrl) => {
     try {
-      const res = await fetch(apiUrl('/api/users/profile'), {
+      const data = await apiFetch('/api/users/profile', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ userId: user?.id, avatar: avatarUrl })
+        body: { avatar: avatarUrl }
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.user) {
-          setUser(prev => ({ ...prev, ...data.user, avatar: avatarUrl }));
-        } else {
-          setUser(prev => ({ ...prev, avatar: avatarUrl }));
-        }
-        showToast('Profil rasmi muvaffaqiyatli yangilandi!');
+      if (data.user) {
+        setUser(prev => ({ ...prev, ...data.user, avatar: avatarUrl }));
+      } else {
+        setUser(prev => ({ ...prev, avatar: avatarUrl }));
       }
+      showToast('Profil rasmi muvaffaqiyatli yangilandi!');
     } catch (err) {
       showToast('Profil rasmini saqlashda xatolik: ' + err.message, 'error');
     }
@@ -439,36 +520,29 @@ export default function App() {
         selfieUrl
       };
 
-      const res = await fetch(apiUrl('/api/verifications'), {
+      await apiFetch('/api/verifications', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload)
+        body: payload
       });
-      if (res.ok) {
-        setShowKYCModal(false);
-        if (user) {
-          const updatedUser = {
-            ...user,
-            isVerified: false,
-            is_verified: false,
-            verificationStatus: 'PENDING',
-            passportSeries: payload.passportSeries,
-            pinfl: payload.pinfl
-          };
-          setUser(updatedUser);
-        }
-        loadData();
-        showToast(
-          lang === 'RU' ? 'Документы отправлены! Ожидают проверки админом.' :
-          lang === 'EN' ? 'KYC submitted! Pending admin review.' :
-          'KYC hujjatlaringiz yuborildi! Admin ko\'rib chiqgach tasdiqlanadi.',
-          'info'
-        );
-      } else {
-        const data = await res.json().catch(() => ({}));
-        showToast('KYC yuborilmadi: ' + (data.error || 'Server so‘rovni qabul qilmadi.'), 'error');
+      setShowKYCModal(false);
+      if (user) {
+        const updatedUser = {
+          ...user,
+          isVerified: false,
+          is_verified: false,
+          verificationStatus: 'PENDING',
+          passportSeries: payload.passportSeries,
+          pinfl: payload.pinfl
+        };
+        setUser(updatedUser);
       }
+      loadData();
+      showToast(
+        lang === 'RU' ? 'Документы отправлены! Ожидают проверки админом.' :
+        lang === 'EN' ? 'KYC submitted! Pending admin review.' :
+        'KYC hujjatlaringiz yuborildi! Admin ko\'rib chiqgach tasdiqlanadi.',
+        'info'
+      );
     } catch (err) {
       showToast('KYC yuborishda xatolik: ' + err.message, 'error');
     }
@@ -476,19 +550,15 @@ export default function App() {
 
   const handleToggleUserKYC = async (userId, targetStatus) => {
     try {
-      const res = await fetch(apiUrl(`/api/users/${userId}/kyc-status`), {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ isVerified: targetStatus })
-      });
-      if (res.ok) {
-        loadData();
-        showToast(
-          targetStatus ? 'Foydalanuvchi KYC holati tasdiqlandi!' : 'Foydalanuvchi KYC tasdiqlanishi bekor qilindi.',
-          targetStatus ? 'success' : 'warning'
-        );
-      }
+      await apiFetch(`/api/users/${userId}/kyc-status`, {
+  method: 'PATCH',
+  body: { isVerified: targetStatus }
+});
+      loadData();
+      showToast(
+        targetStatus ? 'Foydalanuvchi KYC holati tasdiqlandi!' : 'Foydalanuvchi KYC tasdiqlanishi bekor qilindi.',
+        targetStatus ? 'success' : 'warning'
+      );
     } catch (err) {
       showToast('KYC holatini o\'zgartirishda xatolik: ' + err.message, 'error');
     }
@@ -496,12 +566,10 @@ export default function App() {
 
   const handleApproveKYC = async (kycId) => {
     try {
-      const res = await fetch(apiUrl(`/api/verifications/${kycId}`), {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'APPROVED' })
-      });
-      if (!res.ok) throw new Error((await res.json()).error || 'KYC tasdiqlanmadi');
+      await apiFetch(`/api/verifications/${kycId}`, {
+  method: 'PATCH',
+  body: { status: 'APPROVED' }
+});
       loadData();
       showToast('KYC Hujjati muvaffaqiyatli tasdiqlandi!');
     } catch (err) {
@@ -511,12 +579,10 @@ export default function App() {
 
   const handleRejectKYC = async (kycId, reason) => {
     try {
-      const res = await fetch(apiUrl(`/api/verifications/${kycId}`), {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'REJECTED', rejectionReason: reason })
-      });
-      if (!res.ok) throw new Error((await res.json()).error || 'KYC rad etilmadi');
+      await apiFetch(`/api/verifications/${kycId}`, {
+  method: 'PATCH',
+  body: { status: 'REJECTED', rejectionReason: reason }
+});
       loadData();
       showToast('KYC Hujjati rad etildi.', 'warning');
     } catch (err) {
@@ -526,11 +592,10 @@ export default function App() {
 
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
-      await fetch(apiUrl(`/api/orders/${orderId}/status`), {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
-      });
+      await apiFetch(`/api/orders/${orderId}/status`, {
+  method: 'PATCH',
+  body: { status: newStatus }
+});
       loadData();
     } catch (err) {
       showToast('Statusni o\'zgartirishda xatolik: ' + err.message, 'error');
@@ -539,18 +604,12 @@ export default function App() {
 
   const handleAddProduct = async (newProduct) => {
     try {
-      const res = await fetch(apiUrl('/api/products'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newProduct)
-      });
-      if (res.ok) {
-        loadData();
-        showToast('Yangi generator mahsuloti bazaga qo\'shildi!');
-      } else {
-        const error = await res.json().catch(() => ({}));
-        showToast(error.error || 'Mahsulot qo\'shilmadi.', 'error');
-      }
+      await apiFetch('/api/products', {
+  method: 'POST',
+  body: newProduct
+});
+      loadData();
+      showToast('Yangi generator mahsuloti bazaga qo\'shildi!');
     } catch (err) {
       showToast('Mahsulot qo\'shishda xatolik: ' + err.message, 'error');
     }
@@ -558,18 +617,12 @@ export default function App() {
 
   const handleEditProduct = async (productId, updatedData) => {
     try {
-      const res = await fetch(apiUrl(`/api/products/${productId}`), {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedData)
-      });
-      if (res.ok) {
-        loadData();
-        showToast('Mahsulot ma\'lumotlari muvaffaqiyatli yangilandi!');
-      } else {
-        const error = await res.json().catch(() => ({}));
-        showToast(error.error || 'Mahsulot yangilanmadi.', 'error');
-      }
+      await apiFetch(`/api/products/${productId}`, {
+  method: 'PATCH',
+  body: updatedData
+});
+      loadData();
+      showToast('Mahsulot ma\'lumotlari muvaffaqiyatli yangilandi!');
     } catch (err) {
       showToast('Mahsulotni tahrirlashda xatolik: ' + err.message, 'error');
     }
@@ -577,16 +630,9 @@ export default function App() {
 
   const handleDeleteProduct = async (productId) => {
     try {
-      const res = await fetch(apiUrl(`/api/products/${productId}`), {
-        method: 'DELETE'
-      });
-      if (res.ok) {
-        loadData();
-        showToast('Mahsulot bazadan o\'chirildi.', 'warning');
-      } else {
-        const error = await res.json().catch(() => ({}));
-        showToast(error.error || 'Mahsulot o\'chirilmadi.', 'error');
-      }
+      await apiFetch(`/api/products/${productId}`, { method: 'DELETE' });
+      loadData();
+      showToast('Mahsulot bazadan o\'chirildi.', 'warning');
     } catch (err) {
       showToast('Mahsulotni o\'chirishda xatolik: ' + err.message, 'error');
     }
@@ -623,6 +669,8 @@ export default function App() {
         t={t}
         wishlistCount={wishlist.length}
         onOpenWishlist={() => setShowWishlist(true)}
+        onOpenCart={() => setShowCart(true)}
+        cartCount={cart.reduce((sum, i) => sum + (Number(i.quantity) || 1), 0)}
       />
 
       <main style={{ flex: 1 }}>
@@ -642,6 +690,7 @@ export default function App() {
             onSelectProduct={(product) => setSelectedProduct(product)} 
             onViewProduct={(product) => setViewingProduct(product)}
             onAddToWishlist={handleAddToWishlist}
+            onAddToCart={handleAddToCart}
             wishlist={wishlist}
             t={t}
             lang={lang}
@@ -649,11 +698,12 @@ export default function App() {
         )}
 
         {activeTab === 'solar-panels' && (
-          <SolarPanelsPage 
+          <GeneratorRentalPage 
             products={products} 
             onSelectProduct={(product) => setSelectedProduct(product)} 
             onViewProduct={(product) => setViewingProduct(product)}
             onAddToWishlist={handleAddToWishlist}
+            onAddToCart={handleAddToCart}
             wishlist={wishlist}
             t={t}
             lang={lang}
@@ -728,7 +778,7 @@ export default function App() {
               <VoltMaxLogo size="medium" />
             </div>
             <p style={{ fontSize: '0.85rem', color: '#94a3b8', lineHeight: '1.6' }}>
-              {lang === 'RU' ? "Платформа №1 в Узбекистане по продаже и аренде солнечных генераторов." : lang === 'EN' ? "N1 Solar Generators Sales & Rental Platform in Uzbekistan." : "O'zbekiston bo'yicha N1 Quyosh Generatorlari Sotuv va Ijara Platformasi."}
+              {lang === 'RU' ? "Платформа аренды тихих и инверторных генераторов в Узбекистане." : lang === 'EN' ? "Quiet & inverter generator rental platform in Uzbekistan." : "O'zbekiston bo'yicha shovqinsiz va inverterli generatorlar ijarasi platformasi."}
             </p>
           </div>
 
@@ -739,7 +789,7 @@ export default function App() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.88rem' }}>
               <span style={{ cursor: 'pointer', color: activeTab === 'home' ? '#00F0FF' : '#94a3b8' }} onClick={() => setActiveTab('home')}>{t.home || 'Asosiy'}</span>
               <span style={{ cursor: 'pointer', color: activeTab === 'catalog' ? '#00F0FF' : '#94a3b8' }} onClick={() => setActiveTab('catalog')}>{t.catalog || 'Katalog'}</span>
-              <span style={{ cursor: 'pointer', color: activeTab === 'solar-panels' ? '#f59e0b' : '#94a3b8' }} onClick={() => setActiveTab('solar-panels')}>{t.solarPanels || 'Quyosh Panellari'}</span>
+              <span style={{ cursor: 'pointer', color: activeTab === 'solar-panels' ? '#f59e0b' : '#94a3b8' }} onClick={() => setActiveTab('solar-panels')}>{t.solarPanels || 'Generatorlar'}</span>
               <span style={{ cursor: 'pointer', color: activeTab === 'reviews' ? '#00F0FF' : '#94a3b8' }} onClick={() => setActiveTab('reviews')}>{t.reviews || 'Sharhlar'}</span>
               <span style={{ cursor: 'pointer', color: activeTab === 'contact' ? '#00F0FF' : '#94a3b8' }} onClick={() => setActiveTab('contact')}>{t.contact || 'Bizga Bog\'lanish'}</span>
             </div>
@@ -766,12 +816,8 @@ export default function App() {
           </div>
         </div>
 
-        <div className="container" style={{ borderTop: '1px solid #1e293b', paddingTop: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', fontSize: '0.8rem', color: '#94a3b8' }}>
+        <div className="container" style={{ borderTop: '1px solid #1e293b', paddingTop: '1.25rem', display: 'flex', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', fontSize: '0.8rem', color: '#94a3b8' }}>
           <div>© 2026 VOLTMAXHUB Inc. {lang === 'RU' ? "Все права защищены." : lang === 'EN' ? "All rights reserved." : "Barcha huquqlar himoyalangan."}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#1e293b', padding: '4px 12px', borderRadius: '20px', fontSize: '0.78rem' }}>
-            <Eye size={14} style={{ color: '#60a5fa' }} />
-            <span>Tashriflar soni: <strong style={{ color: '#fff' }}>{siteSettings?.visitCount || 1420}</strong></span>
-          </div>
         </div>
       </footer>
 
@@ -827,7 +873,55 @@ export default function App() {
         />
       )}
 
-      {/* Wishlist / Cart Slide-in Panel */}
+      {/* Cart Slide-in Panel */}
+      <CartPanel
+        open={showCart}
+        onClose={() => setShowCart(false)}
+        items={cart}
+        onUpdateQuantity={handleCartQuantity}
+        onRemove={handleRemoveFromCart}
+        onCheckout={handleCartCheckout}
+        t={t}
+        lang={lang}
+      />
+
+      {/* Guest wishlist -> login prompt */}
+      {loginPrompt && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 10005, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', padding: '1.5rem' }}>
+          <div style={{ background: 'var(--meco-card-bg)', border: '1px solid var(--meco-border)', borderRadius: '18px', padding: '1.75rem', maxWidth: '420px', width: '100%', boxShadow: '0 20px 50px rgba(0,0,0,0.4)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+              <div>
+                <h3 style={{ margin: '0 0 0.4rem', fontSize: '1.1rem', fontWeight: '800' }}>
+                  {lang === 'RU' ? 'Войдите в аккаунт' : lang === 'EN' ? 'Please sign in' : 'Tizimga kiring'}
+                </h3>
+                <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--meco-text-sub)', lineHeight: 1.55 }}>
+                  {lang === 'RU'
+                    ? 'Избранное доступно только зарегистрированным пользователям.'
+                    : lang === 'EN'
+                    ? 'Wishlist is only available to signed-in users.'
+                    : 'Yoqtirganlar faqat tizimga kiringan foydalanuvchilar uchun mavjud.'}
+                </p>
+              </div>
+              <button type="button" onClick={() => setLoginPrompt(null)} aria-label="Close"
+                style={{ background: 'transparent', border: 'none', color: 'var(--meco-text-sub)', cursor: 'pointer' }}>
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1.25rem' }}>
+              <button type="button" onClick={() => { setLoginPrompt(null); setShowAuthModal(true); }}
+                style={{ flex: 1, padding: '0.7rem', borderRadius: '10px', border: 'none', background: '#f59e0b', color: '#0f172a', fontWeight: '800', cursor: 'pointer' }}>
+                {lang === 'RU' ? 'Войти' : lang === 'EN' ? 'Sign in' : 'Kirish'}
+              </button>
+              <button type="button" onClick={() => { setLoginPrompt(null); setShowAuthModal(true); }}
+                style={{ flex: 1, padding: '0.7rem', borderRadius: '10px', border: '1px solid var(--meco-border)', background: 'transparent', color: 'var(--meco-text-main)', fontWeight: '700', cursor: 'pointer' }}>
+                {lang === 'RU' ? 'Регистрация' : lang === 'EN' ? 'Register' : 'Ro\'yxatdan o\'tish'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Wishlist Slide-in Panel */}
       {showWishlist && (
         <>
           <div

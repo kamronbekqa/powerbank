@@ -7,7 +7,7 @@ import {
   Building, Phone, Mail, MapPin, Save, Send, MessageSquare,
   Smartphone, Laptop, Tv, Fan, Home, Coffee, Car, Flame
 } from 'lucide-react';
-import { apiUrl } from '../utils/api';
+import { apiUrl, apiFetch } from '../utils/api';
 
 export default function AdminCRM({ 
   verifications = [], 
@@ -40,7 +40,7 @@ export default function AdminCRM({
   const [companyTelegram, setCompanyTelegram] = useState(siteSettings?.telegram || 'https://t.me/voltmaxhub_uz');
   const [companyInstagram, setCompanyInstagram] = useState(siteSettings?.instagram || 'https://instagram.com/voltmaxhub');
   const [companyName, setCompanyName] = useState(siteSettings?.companyName || 'VOLTMAXHUB');
-  const [visitCountInput, setVisitCountInput] = useState(siteSettings?.visitCount !== undefined ? siteSettings.visitCount : 1420);
+  const [visitCountInput, setVisitCountInput] = useState(siteSettings?.visitCount ?? 0);
   const [botChatId, setBotChatId] = useState(siteSettings?.botChatId || '');
   const [botToken, setBotToken] = useState('');
   const [penaltyRate, setPenaltyRate] = useState(siteSettings?.penaltyRate !== undefined ? siteSettings.penaltyRate : 0.5);
@@ -50,27 +50,90 @@ export default function AdminCRM({
   const [telegramMessage, setTelegramMessage] = useState('');
   const [botValidationMsg, setBotValidationMsg] = useState('');
 
+  // Per-block loading + message state so each card saves independently.
+  const [busyMap, setBusyMap] = useState({});
+  const [msgMap, setMsgMap] = useState({});
+  const [refreshToken, setRefreshToken] = useState(0);
+
+  // Inline status line for a settings card.
+  const BlockStatus = ({ block }) => {
+    const m = msgMap[block];
+    if (!m) return null;
+    return (
+      <div
+        role="status"
+        style={{
+          marginTop: '0.75rem', padding: '0.6rem 0.85rem', borderRadius: '8px',
+          fontSize: '0.82rem', fontWeight: 700,
+          background: m.type === 'ok' ? 'var(--success-bg)' : 'var(--danger-bg)',
+          color: m.type === 'ok' ? 'var(--success)' : 'var(--danger)',
+          border: `1px solid ${m.type === 'ok' ? 'rgba(22,163,74,0.25)' : 'rgba(220,38,38,0.25)'}`
+        }}
+      >
+        {m.type === 'ok' ? '✅ ' : '⚠️ '}{m.text}
+      </div>
+    );
+  };
+
+  // ── Per-block save helpers ───────────────────────────────────────
+  // Each block posts only its own fields to its own endpoint, then shows a
+  // loading -> success/error state. apiFetch attaches the session cookie and CSRF token.
+  const saveBlock = async (endpoint, payload, busyKey, msgKey) => {
+    setBusyMap(b => ({ ...b, [busyKey]: true }));
+    setMsgMap(m => ({ ...m, [msgKey]: null }));
+    try {
+      const data = await apiFetch(endpoint, { method: 'PATCH', body: payload });
+      setMsgMap(m => ({ ...m, [msgKey]: { type: 'ok', text: data?.message || 'Saqlandi.' } }));
+      if (data?.settings && onSaveSettings) {
+        onSaveSettings(data.settings);
+        setRefreshToken(t => t + 1);
+      }
+      return true;
+    } catch (err) {
+      setMsgMap(m => ({ ...m, [msgKey]: { type: 'err', text: err.message || 'Saqlashda xatolik yuz berdi.' } }));
+      return false;
+    } finally {
+      setBusyMap(b => ({ ...b, [busyKey]: false }));
+    }
+  };
+
+  const saveFooter = () => saveBlock('/api/settings/footer', {
+    companyName, phone: companyPhone, email: companyEmail,
+    telegram: companyTelegram, instagram: companyInstagram, address: companyAddress
+  }, 'footer', 'footer');
+
+  const saveVisitor = () => saveBlock('/api/settings/visitor',
+    { visitCount: visitCountInput }, 'visitor', 'visitor');
+
+  const saveDelivery = () => saveBlock('/api/settings/delivery', {
+    deliveryStartHour, deliveryEndHour, deliverySlotLabel, minRentalDays, maxRentalDays
+  }, 'delivery', 'delivery');
+
+  const saveTelegram = () => saveBlock('/api/settings/telegram', {
+    botChatId, penaltyRate, legalNoticeDays,
+    ...(botToken.trim() ? { botToken: botToken.trim() } : {})
+  }, 'telegram', 'telegram').then(ok => { if (ok) setBotToken(''); });
+
+  const saveMyId = () => saveBlock('/api/settings/myid', {
+    myIdEnabled, myIdClientId,
+    ...(myIdClientSecret.trim() ? { myIdClientSecret: myIdClientSecret.trim() } : {})
+  }, 'myid', 'myid').then(ok => { if (ok) setMyIdClientSecret(''); });
+
   const validateBotSettings = async () => {
     if (!botToken.trim() || !botChatId.trim()) {
-      setBotValidationMsg('Bot token va Chat ID maydonlarini to\'ldiring.');
+      setBotValidationMsg('❌ Bot token va Chat ID maydonlarini to\'ldiring.');
       return;
     }
     setTelegramBusy(true);
     setBotValidationMsg('');
     try {
-      const res = await fetch(apiUrl('/api/settings/validate-telegram'), {
+      const data = await apiFetch('/api/settings/validate-telegram', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ botToken: botToken.trim(), botChatId: botChatId.trim() })
+        body: { botToken: botToken.trim(), botChatId: botChatId.trim() }
       });
-      const data = await res.json();
-      if (data.success) {
-        setBotValidationMsg(`✅ ${data.message} Bot: @${data.botInfo?.username || 'N/A'}`);
-      } else {
-        setBotValidationMsg(`❌ ${data.error}`);
-      }
+      setBotValidationMsg(`✅ ${data.message}${data.botInfo?.username ? ' Bot: @' + data.botInfo.username : ''}`);
     } catch (err) {
-      setBotValidationMsg(`❌ Xatolik: ${err.message}`);
+      setBotValidationMsg(`❌ ${err.message}`);
     } finally {
       setTelegramBusy(false);
     }
@@ -79,13 +142,13 @@ export default function AdminCRM({
   const refreshTelegramStatus = async () => {
     setTelegramBusy(true);
     try {
-      const response = await fetch(apiUrl('/api/telegram/status'));
-      const contentType = response.headers.get('content-type') || '';
-      if (!contentType.includes('application/json')) {
-        throw new Error('Backend API javob bermayapti. 3001-portdagi server ishlayotganini tekshiring.');
-      }
-      const data = await response.json();
-      setTelegramStatus(data);
+      // New endpoint returns safe metadata only (never the bot token).
+      const data = await apiFetch('/api/settings/telegram');
+      setTelegramStatus({
+        tokenConfigured: data?.tokenConfigured,
+        tokenSource: data?.tokenSource,
+        chatIdSource: data?.chatIdSource
+      });
     } catch (error) {
       setTelegramMessage(`Bot holatini tekshirib bo‘lmadi: ${error.message}`);
     } finally { setTelegramBusy(false); }
@@ -97,12 +160,7 @@ export default function AdminCRM({
     setTelegramBusy(true);
     setTelegramMessage('');
     try {
-      const response = await fetch(apiUrl('/api/telegram/setup-webhook'), { method: 'POST' });
-      if (!(response.headers.get('content-type') || '').includes('application/json')) {
-        throw new Error('Backend API javob bermayapti. Serverni ishga tushiring va qayta urinib ko‘ring.');
-      }
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Webhook sozlanmadi.');
+      const data = await apiFetch('/api/telegram/setup-webhook', { method: 'POST' });
       setTelegramMessage(data.message);
       await refreshTelegramStatus();
     } catch (error) { setTelegramMessage(error.message); }
@@ -124,6 +182,7 @@ export default function AdminCRM({
   const [newAdminLogin, setNewAdminLogin] = useState('');
   const [newAdminPassword, setNewAdminPassword] = useState('');
   const [adminCredMsg, setAdminCredMsg] = useState('');
+  const [adminBusy, setAdminBusy] = useState(false);
 
   // Sync with siteSettings prop changes
   React.useEffect(() => {
@@ -203,16 +262,31 @@ export default function AdminCRM({
     }
   };
   const at = AT[lang] || AT.UZ;
+  // Pay-on-delivery fulfilment chain comes first; the older rental states remain
+  // available so existing orders keep working.
   const orderStatusLabels = lang === 'RU' ? {
-    PENDING: 'Ожидает', APPROVED: 'Подтверждён', ACTIVE: 'Активная аренда', COMPLETED: 'Завершён',
+    PENDING: 'Ожидает', PREPARING: 'Готовится', DELIVERING: 'Доставляется', DELIVERED_PAID: 'Доставлено и оплачено',
+    APPROVED: 'Подтверждён', ACTIVE: 'Активная аренда', COMPLETED: 'Завершён',
     OVERDUE: 'Просрочен', LEGAL_PROCESS: 'Юридический процесс', CANCELLED: 'Отменён'
   } : lang === 'EN' ? {
-    PENDING: 'Pending', APPROVED: 'Approved', ACTIVE: 'Active rental', COMPLETED: 'Completed',
+    PENDING: 'Pending', PREPARING: 'Preparing', DELIVERING: 'Out for delivery', DELIVERED_PAID: 'Delivered & paid',
+    APPROVED: 'Approved', ACTIVE: 'Active rental', COMPLETED: 'Completed',
     OVERDUE: 'Overdue', LEGAL_PROCESS: 'Legal process', CANCELLED: 'Cancelled'
   } : {
-    PENDING: 'Kutilmoqda', APPROVED: 'Tasdiqlangan', ACTIVE: 'Faol ijara', COMPLETED: 'Yakunlangan',
+    PENDING: 'Kutilmoqda', PREPARING: 'Tayyorlanmoqda', DELIVERING: 'Yetkazilmoqda', DELIVERED_PAID: 'Yetkazildi va to‘landi',
+    APPROVED: 'Tasdiqlangan', ACTIVE: 'Faol ijara', COMPLETED: 'Yakunlangan',
     OVERDUE: 'Muddati o‘tgan', LEGAL_PROCESS: 'Huquqiy jarayonda', CANCELLED: 'Bekor qilingan'
   };
+  const paymentMethodLabels = lang === 'RU'
+    ? { COD: 'Наличными при доставке', ONLINE: 'Онлайн (предоплата)' }
+    : lang === 'EN'
+    ? { COD: 'Cash on delivery', ONLINE: 'Online (prepaid)' }
+    : { COD: 'Naqd (yetkazishda)', ONLINE: 'Onlayn (oldindan to‘lov)' };
+  const paymentStatusLabels = lang === 'RU'
+    ? { UNPAID: 'Не оплачено', PAID: 'Оплачено' }
+    : lang === 'EN'
+    ? { UNPAID: 'Unpaid', PAID: 'Paid' }
+    : { UNPAID: 'To‘lanmagan', PAID: 'To‘langan' };
   const [selectedKycDoc, setSelectedKycDoc] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
 
@@ -454,7 +528,7 @@ export default function AdminCRM({
 
           <div className={`admin-nav-item ${activeTab === 'solar-panels' ? 'active' : ''}`} onClick={() => setActiveTab('solar-panels')}>
             <Sun size={18} style={{ color: '#f59e0b' }} />
-            Quyosh Panellari ({products.filter(p => p.category === 'SOLAR_PANEL' || p.title.toLowerCase().includes('panel')).length})
+            Generatorlar ({products.filter(p => p.category === 'SOLAR_PANEL' || p.title.toLowerCase().includes('panel')).length})
           </div>
 
           <div className={`admin-nav-item ${activeTab === 'kyc' ? 'active' : ''}`} onClick={() => setActiveTab('kyc')}>
@@ -990,8 +1064,8 @@ export default function AdminCRM({
                       value={editingProduct.category || 'GENERATOR'} 
                       onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })}
                     >
-                      <option value="GENERATOR">⚡ Quyosh Generatori (Powerbank Station)</option>
-                      <option value="SOLAR_PANEL">☀️ Quyosh Paneli (Solar Panel Card)</option>
+                      <option value="GENERATOR">⚡ Generator (ijara / sotuv)</option>
+                      <option value="SOLAR_PANEL">☀️ Quyosh paneli (solar panel)</option>
                     </select>
                   </div>
 
@@ -1107,7 +1181,7 @@ export default function AdminCRM({
                       Admin Mahsulotlar Boshqaruvi ({products.length} ta mahsulot)
                     </h1>
                     <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
-                      Generatorlar va Quyosh panellari kartochkalarini tahrirlash, o'chirish yoki yangi qo'shish.
+                      Generatorlar va quyosh panellari kartochkalarini tahrirlash, o'chirish yani yangi qo'shish.
                     </p>
                   </div>
 
@@ -1161,7 +1235,7 @@ export default function AdminCRM({
                       cursor: 'pointer'
                     }}
                   >
-                    ☀️ Quyosh Panellari ({products.filter(p => p.category === 'SOLAR_PANEL').length})
+                    ☀️ Quyosh panellari ({products.filter(p => p.category === 'SOLAR_PANEL').length})
                   </button>
                 </div>
 
@@ -1216,7 +1290,7 @@ export default function AdminCRM({
                           <div className="card-badges">
                             <span className="badge badge-info card-badges-left" style={{ background: 'rgba(15, 23, 42, 0.85)', color: '#38bdf8', backdropFilter: 'blur(6px)' }}>
                               <Zap size={12} style={{ flexShrink: 0 }} />
-                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{product.capacity || 'Solar Generator'}</span>
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{product.capacity || 'Generator'}</span>
                             </span>
                             <div className="card-badges-right">
                               <span className="badge badge-success" style={{ backdropFilter: 'blur(6px)' }}>
@@ -1306,10 +1380,10 @@ export default function AdminCRM({
               <div>
                 <h1 style={{ fontSize: '1.6rem', fontWeight: '800', color: 'var(--meco-text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Sun size={26} style={{ color: '#f59e0b' }} />
-                  Quyosh Panellari Boshqaruvi ({products.filter(p => p.category === 'SOLAR_PANEL' || p.title.toLowerCase().includes('panel')).length} ta panel)
+                  Quyosh Panellari Boshqaruvi ({products.filter(p => p.category === 'SOLAR_PANEL' || p.title.toLowerCase().includes('panel')).length} ta mahsulot)
                 </h1>
                 <p style={{ color: 'var(--meco-text-muted)', fontSize: '0.9rem' }}>
-                  VOLTMAXHUB quyosh panellari kartochkalarini tahrirlash, yangi panel qo'shish yoki o'chirish.
+                  VOLTMAXHUB quyosh panellari kartochkalarini tahrirlash, yangi mahsulot qo'shish yoki o'chirish.
                 </p>
               </div>
 
@@ -1321,7 +1395,7 @@ export default function AdminCRM({
                 }} 
                 style={{ height: '44px', fontWeight: '800', background: '#f59e0b', borderColor: '#f59e0b' }}
               >
-                <Plus size={18} /> Yangi Quyosh Paneli Qo'shish
+                <Plus size={18} /> Yangi Mahsulot Qo'shish
               </button>
             </div>
 
@@ -1363,7 +1437,7 @@ export default function AdminCRM({
                         />
                         <div className="card-badges">
                           <span className="badge badge-info card-badges-left" style={{ background: 'rgba(245, 158, 11, 0.9)', color: '#fff', backdropFilter: 'blur(6px)' }}>
-                            ☀️ {product.capacity || 'Quyosh Paneli'}
+                            ☀️ {product.capacity || 'Quyosh paneli'}
                           </span>
                           <div className="card-badges-right">
                             <span className="badge badge-success" style={{ backdropFilter: 'blur(6px)' }}>
@@ -1412,7 +1486,7 @@ export default function AdminCRM({
                             <button 
                               className="btn btn-danger btn-sm" 
                               onClick={() => {
-                                if (window.confirm(`"${product.title}" quyosh panelini bazadan o'chirmoqchimisiz?`)) {
+                                if (window.confirm(`"${product.title}" mahsulotini bazadan o'chirmoqchimisiz?`)) {
                                   onDeleteProduct(product.id);
                                 }
                               }}
@@ -1566,9 +1640,15 @@ export default function AdminCRM({
                         <td>{startStr} — {endStr}</td>
                         <td><strong>{amount.toLocaleString()} UZS</strong></td>
                         <td>
-                          <span className={`badge ${order.status === 'ACTIVE' || order.status === 'APPROVED' ? 'badge-success' : order.status === 'OVERDUE' || order.status === 'LEGAL_PROCESS' ? 'badge-danger' : 'badge-info'}`}>
+                          <span className={`badge ${order.status === 'ACTIVE' || order.status === 'APPROVED' || order.status === 'DELIVERED_PAID' ? 'badge-success' : order.status === 'OVERDUE' || order.status === 'LEGAL_PROCESS' ? 'badge-danger' : 'badge-info'}`}>
                             {orderStatusLabels[order.status] || order.status}
                           </span>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--meco-text-sub)', marginTop: '0.25rem' }}>
+                            {paymentMethodLabels[order.paymentMethod || 'COD']}
+                          </div>
+                          <div style={{ fontSize: '0.7rem', marginTop: '0.15rem', color: order.paymentStatus === 'PAID' ? '#059669' : '#b45309', fontWeight: '700' }}>
+                            {paymentStatusLabels[order.paymentStatus || 'UNPAID']}
+                          </div>
                         </td>
                         <td>
                           <select 
@@ -1684,20 +1764,11 @@ export default function AdminCRM({
                             className="btn btn-sm btn-secondary"
                             onClick={async () => {
                               try {
-                                const res = await fetch(apiUrl('/api/legal/send-telegram'), {
+                                const data = await apiFetch('/api/legal/send-telegram', {
                                   method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({
-                                    orderId: order.id,
-                                    chatId: botChatId,
-                                  })
+                                  body: { orderId: order.id, chatId: botChatId }
                                 });
-                                const data = await res.json();
-                                if (data.success) {
-                                  alert(`🤖 Telegram Bot Bildirishnomasi:\n\n${data.message || 'Da\'vo arizasi Telegram Bot orqali yuborildi!'}\n\nMatn ko'rinishi:\n${data.previewText.slice(0, 200)}...`);
-                                } else {
-                                  alert('Xatolik: ' + data.error);
-                                }
+                                alert(`\u{1F916} ${data.message || 'Da\'vo arizasi Telegram Bot orqali yuborildi!'}`);
                               } catch (err) {
                                 alert('Telegram yuborishda xatolik: ' + err.message);
                               }
@@ -1878,8 +1949,8 @@ export default function AdminCRM({
               <div className="form-group">
                 <label className="form-label">Kategoriya (Qaysi bo'limga joylansin?)</label>
                 <select className="form-input" value={category} onChange={e => setCategory(e.target.value)}>
-                  <option value="GENERATOR">⚡ Quyosh Generatori (Powerbank Station)</option>
-                  <option value="SOLAR_PANEL">☀️ Quyosh Paneli (Solar Panel Card)</option>
+                  <option value="GENERATOR">⚡ Generator (ijara / sotuv)</option>
+                  <option value="SOLAR_PANEL">☀️ Quyosh paneli (solar panel)</option>
                 </select>
               </div>
 
@@ -2129,24 +2200,23 @@ export default function AdminCRM({
                     setAdminCredMsg("Yangi login yoki parol kiriting.");
                     return;
                   }
+                  setAdminBusy(true);
+                  setAdminCredMsg('');
                   try {
-                    const res = await fetch(apiUrl('/api/settings/admin-credentials'), {
+                    const data = await apiFetch('/api/settings/admin-credentials', {
                       method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ newLogin: newAdminLogin, newPassword: newAdminPassword })
+                      body: { newLogin: newAdminLogin, newPassword: newAdminPassword }
                     });
-                    const data = await res.json();
-                    if (res.ok) {
-                      setAdminCredMsg("Admin login va paroli muvaffaqiyatli saqlandi!");
-                      setNewAdminLogin('');
-                      setNewAdminPassword('');
-                    } else {
-                      setAdminCredMsg("Xatolik: " + (data.error || 'Saqlab bo\'lmadi'));
-                    }
+                    setAdminCredMsg('\u2705 ' + (data.message || "Admin ma'lumotlari yangilandi."));
+                    setNewAdminLogin('');
+                    setNewAdminPassword('');
                   } catch (err) {
-                    setAdminCredMsg("Xatolik: " + err.message);
+                    setAdminCredMsg('\u274c ' + err.message);
+                  } finally {
+                    setAdminBusy(false);
                   }
                 }}
+                disabled={adminBusy}
                 className="btn btn-secondary"
                 style={{ fontWeight: '700', fontSize: '0.85rem' }}
               >
@@ -2219,14 +2289,46 @@ export default function AdminCRM({
                   <input type="text" className="form-input" value={companyAddress} onChange={e => setCompanyAddress(e.target.value)} />
                 </div>
 
-                <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                  <label className="form-label">
-                    <Eye size={14} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
-                    Sayt Tashriflar Soni (Visitor Counter Override)
-                  </label>
-                  <input type="number" className="form-input" value={visitCountInput} onChange={e => setVisitCountInput(Number(e.target.value))} />
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--meco-border)' }}>
+                <button type="button" className="btn btn-primary" onClick={saveFooter} disabled={busyMap.footer}
+                  style={{ fontWeight: '800', minWidth: '210px', justifyContent: 'center' }}>
+                  <Save size={16} /> {busyMap.footer ? 'Saqlanmoqda...' : 'Footer Sozlamalarini Saqlash'}
+                </button>
+              </div>
+              <BlockStatus block="footer" />
+            </div>
+
+            {/* 2b. Visitor Counter — own block, own save */}
+            <div style={{ background: 'var(--meco-card-bg)', border: '1px solid var(--meco-border)', borderRadius: '16px', padding: '1.75rem', marginBottom: '1.5rem', boxShadow: 'var(--shadow-sm)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.25rem', paddingBottom: '0.85rem', borderBottom: '1px solid var(--meco-border)' }}>
+                <div style={{ background: 'var(--meco-primary-light)', color: 'var(--meco-primary)', width: '38px', height: '38px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Eye size={20} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: '800', fontSize: '1rem', color: 'var(--meco-text-main)' }}>
+                    Sayt Tashriflari Hisoblagichi
+                  </div>
+                  <div style={{ color: 'var(--meco-text-muted)', fontSize: '0.78rem' }}>
+                    Footer dagi tashriflar sonini qo‘lda boshqarish
+                  </div>
                 </div>
               </div>
+
+              <div className="form-group">
+                <label className="form-label">Tashriflar Soni (Visitor Counter Override)</label>
+                <input type="number" min="0" className="form-input" value={visitCountInput}
+                  onChange={e => setVisitCountInput(Number(e.target.value))} />
+              </div>
+
+              <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--meco-border)' }}>
+                <button type="button" className="btn btn-primary" onClick={saveVisitor} disabled={busyMap.visitor}
+                  style={{ fontWeight: '800', minWidth: '210px', justifyContent: 'center' }}>
+                  <Save size={16} /> {busyMap.visitor ? 'Saqlanmoqda...' : 'Tashriflar Sonini Saqlash'}
+                </button>
+              </div>
+              <BlockStatus block="visitor" />
             </div>
 
             {/* 3. Telegram Bot & Legal Automation Card */}
@@ -2298,9 +2400,17 @@ export default function AdminCRM({
 
                 <div className="form-group">
                   <label className="form-label">Sudga Berish Muddati (kun o'tgach)</label>
-                  <input type="number" className="form-input" value={legalNoticeDays} onChange={e => setLegalNoticeDays(Number(e.target.value))} />
+                  <input type="number" min="1" max="90" className="form-input" value={legalNoticeDays} onChange={e => setLegalNoticeDays(Number(e.target.value))} />
                 </div>
               </div>
+
+              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--meco-border)' }}>
+                <button type="button" className="btn btn-primary" onClick={saveTelegram} disabled={busyMap.telegram}
+                  style={{ fontWeight: '800', minWidth: '260px', justifyContent: 'center' }}>
+                  <Save size={16} /> {busyMap.telegram ? 'Saqlanmoqda...' : 'Telegram Sozlamalarini Saqlash'}
+                </button>
+              </div>
+              <BlockStatus block="telegram" />
             </div>
 
             {/* 4. Delivery & Rental Rules Card */}
@@ -2338,9 +2448,17 @@ export default function AdminCRM({
                 </div>
                 <div className="form-group">
                   <label className="form-label">Maksimal Ijara Chegarasi (kun)</label>
-                  <input type="number" min="1" className="form-input" value={maxRentalDays} onChange={e => setMaxRentalDays(Number(e.target.value))} />
+                  <input type="number" min="1" max="365" className="form-input" value={maxRentalDays} onChange={e => setMaxRentalDays(Number(e.target.value))} />
                 </div>
               </div>
+
+              <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--meco-border)' }}>
+                <button type="button" className="btn btn-primary" onClick={saveDelivery} disabled={busyMap.delivery}
+                  style={{ fontWeight: '800', minWidth: '250px', justifyContent: 'center' }}>
+                  <Save size={16} /> {busyMap.delivery ? 'Saqlanmoqda...' : 'Yetkazib Berish Sozlamalarini Saqlash'}
+                </button>
+              </div>
+              <BlockStatus block="delivery" />
             </div>
 
             {/* 5. MyID Integration Token Card */}
@@ -2375,42 +2493,16 @@ export default function AdminCRM({
                   <input type="password" className="form-input" placeholder="secret_key_abc..." value={myIdClientSecret} onChange={e => setMyIdClientSecret(e.target.value)} />
                 </div>
               </div>
+
+              <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--meco-border)' }}>
+                <button type="button" className="btn btn-primary" onClick={saveMyId} disabled={busyMap.myid}
+                  style={{ fontWeight: '800', minWidth: '210px', justifyContent: 'center' }}>
+                  <Save size={16} /> {busyMap.myid ? 'Saqlanmoqda...' : 'MyID Sozlamalarini Saqlash'}
+                </button>
+              </div>
+              <BlockStatus block="myid" />
             </div>
 
-            <button
-              onClick={async () => {
-                if (onSaveSettings) {
-                  await onSaveSettings({
-                    phone: companyPhone,
-                    email: companyEmail,
-                    address: companyAddress,
-                    telegram: companyTelegram,
-                    instagram: companyInstagram,
-                    companyName,
-                    botChatId,
-                    botToken: botToken || undefined,
-                    penaltyRate,
-                    legalNoticeDays,
-                    visitCount: visitCountInput,
-                    deliveryStartHour,
-                    deliveryEndHour,
-                    deliverySlotLabel,
-                    maxRentalDays,
-                    minRentalDays,
-                    myIdEnabled,
-                    myIdClientId,
-                    myIdClientSecret
-                  });
-                }
-                setSettingsSaved(true);
-                setTimeout(() => setSettingsSaved(false), 3000);
-              }}
-              className="btn btn-primary"
-              style={{ height: '48px', fontWeight: '800', fontSize: '0.95rem', justifyContent: 'center', minWidth: '240px' }}
-            >
-              <Save size={18} />
-              {at.saveSettings}
-            </button>
           </div>
         )}
 
