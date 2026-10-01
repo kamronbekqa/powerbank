@@ -1,6 +1,11 @@
 import React from 'react';
 
-export default function VoltMaxLogo({ size = 'medium', showText = true, className = '' }) {
+/**
+ * `onDark` forces light text. The footer sits on a fixed dark background
+ * regardless of theme, so a theme-aware colour would render near-black text on
+ * near-black and become invisible in light mode.
+ */
+export default function VoltMaxLogo({ size = 'medium', showText = true, onDark = false, className = '' }) {
   const iconSizes = {
     small: { w: 28, h: 28, font: '1.1rem', subFont: '0.6rem' },
     medium: { w: 36, h: 36, font: '1.35rem', subFont: '0.7rem' },
@@ -34,10 +39,10 @@ export default function VoltMaxLogo({ size = 'medium', showText = true, classNam
       {showText && (
         <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
           <span style={{ fontSize: dim.font, fontWeight: 900, tracking: '0.5px', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-            <span style={{ color: 'var(--meco-text-main, #0f172a)' }}>VOLTMAX</span>
+            <span style={{ color: onDark ? '#f8fafc' : 'var(--meco-text-main, #0f172a)' }}>VOLTMAX</span>
             <span style={{ color: '#00F0FF', textShadow: '0 0 12px rgba(0,240,255,0.4)' }}>HUB</span>
           </span>
-          <span style={{ fontSize: dim.subFont, fontWeight: 700, color: 'var(--meco-text-muted, #64748b)', letterSpacing: '1.5px', textTransform: 'uppercase', marginTop: '2px' }}>
+          <span style={{ fontSize: dim.subFont, fontWeight: 700, color: onDark ? '#94a3b8' : 'var(--meco-text-muted, #64748b)', letterSpacing: '1.5px', textTransform: 'uppercase', marginTop: '2px' }}>
             SOLAR & POWER STATIONS
           </span>
         </div>

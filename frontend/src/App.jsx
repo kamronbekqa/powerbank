@@ -775,7 +775,8 @@ export default function App() {
         <div className="container footer-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '2rem', marginBottom: '2rem' }}>
           <div>
             <div style={{ marginBottom: '12px' }}>
-              <VoltMaxLogo size="medium" />
+              {/* Footer has a fixed dark background in both themes. */}
+              <VoltMaxLogo size="medium" onDark />
             </div>
             <p style={{ fontSize: '0.85rem', color: '#94a3b8', lineHeight: '1.6' }}>
               {lang === 'RU' ? "Платформа аренды тихих и инверторных генераторов в Узбекистане." : lang === 'EN' ? "Quiet & inverter generator rental platform in Uzbekistan." : "O'zbekiston bo'yicha shovqinsiz va inverterli generatorlar ijarasi platformasi."}

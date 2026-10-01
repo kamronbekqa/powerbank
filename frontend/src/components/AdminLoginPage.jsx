@@ -102,7 +102,7 @@ export default function AdminLoginPage({ onLoginSuccess, onGoBack, lang = 'UZ', 
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="admin"
+                  placeholder="+998 90 000 00 00"
                   value={login}
                   onChange={e => setLogin(e.target.value)}
                   required
@@ -120,7 +120,7 @@ export default function AdminLoginPage({ onLoginSuccess, onGoBack, lang = 'UZ', 
                 <input
                   type={showPassword ? 'text' : 'password'}
                   className="form-input"
-                  placeholder="admin123"
+                  placeholder="••••••••"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   required
