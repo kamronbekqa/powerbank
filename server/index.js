@@ -20,7 +20,20 @@ import {
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
-const JWT_SECRET = process.env.JWT_SECRET || 'voltmaxhub_super_secret_jwt_key_2026';
+// A known fallback secret would let anyone forge admin sessions, so production
+// must supply its own. Development still gets an ephemeral random secret.
+const JWT_SECRET = process.env.JWT_SECRET || (() => {
+  if (process.env.NODE_ENV === 'production') return '';
+  return crypto.randomBytes(48).toString('hex');
+})();
+if (!JWT_SECRET) {
+  console.error('');
+  console.error('  [SECURITY] JWT_SECRET is not set and NODE_ENV=production.');
+  console.error('  Refusing to start: a missing secret would allow anyone to forge');
+  console.error('  admin sessions. Set JWT_SECRET in your environment.');
+  console.error('');
+  process.exit(1);
+}
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 const TEN_DAYS_MS = 10 * 24 * 60 * 60 * 1000;
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || '';
@@ -38,6 +51,58 @@ const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3001;
 let telegramPollingStarted = false;
+
+// ── STARTUP SCHEMA CHECK ─────────────────────────────────────────────────────
+// prisma/dev.db is intentionally not tracked in git (it holds personal data),
+// so a fresh clone or a new server has no database file at all. Without this
+// check the first query fails with a raw Prisma error such as
+// "The table `main.Product` does not exist" instead of telling the operator
+// what to do.
+async function assertSchemaReady() {
+  if (process.env.SKIP_SCHEMA_CHECK === '1') return;
+  const isPostgres = (process.env.DATABASE_URL || '').startsWith('postgres');
+  try {
+    await prisma.$queryRawUnsafe('SELECT 1 FROM "Product" LIMIT 1');
+    return;
+  } catch (error) {
+    // Distinguish "cannot reach the database" from "reachable but empty", which
+    // need completely different fixes.
+    let reachable = false;
+    try { await prisma.$queryRawUnsafe('SELECT 1'); reachable = true; } catch { reachable = false; }
+
+    console.error('');
+    if (!reachable) {
+      console.error('  [DB] Cannot reach the database.');
+      console.error('');
+      if (isPostgres) {
+        console.error('  PostgreSQL is configured but not answering. Check, in order:');
+        console.error('    1. Is the server running?      npm run db:local:status');
+        console.error('    2. Wrong host/port/password?   compare .env with your provider');
+        console.error('    3. Firewall / not reachable?   try:  psql "$DATABASE_URL" -c "SELECT 1"');
+        console.error('');
+        console.error('  For local work:  npm run db:local:start   (starts your local cluster)');
+      } else {
+        console.error('  SQLite is configured but the file is missing or unreadable.');
+        console.error('    Check DATABASE_URL in .env (expected: file:./dev.db)');
+      }
+      console.error('  Raw error: ' + String(error.message).split('\n')[0]);
+      console.error('');
+      process.exit(1);
+    }
+
+    console.error('  [DB] The database is reachable but the schema is missing.');
+    console.error('');
+    console.error('  The server connected fine, but the tables have not been created.');
+    console.error('  Apply the migrations:');
+    console.error('');
+    console.error('    npm run db:setup');
+    console.error('');
+    console.error('  (runs `prisma generate` + `prisma migrate deploy`)');
+    console.error('  Check what it thinks it has applied with:  npm run db:status');
+    console.error('');
+    process.exit(1);
+  }
+}
 
 // ── TELEGRAM DYNAMIC CREDENTIALS & RETRY DISPATCH HELPER ─────────────────────
 async function getTelegramConfig() {
@@ -208,7 +273,8 @@ async function checkOverdueRentals() {
   }
 }
 
-checkOverdueRentals();
+// Runs after assertSchemaReady() — see startServer().
+// (was: checkOverdueRentals();)
 
 // ── AUTHENTICATION API ──────────────────────────────────────────────────────
 // Per-account + per-IP throttling. Fails are counted; successes are not.
@@ -454,7 +520,8 @@ async function ensureSolarPanelsSeed() {
     console.error('Solar Panel seed error:', err);
   }
 }
-ensureSolarPanelsSeed();
+// Runs after assertSchemaReady() — see startServer().
+// (was: ensureSolarPanelsSeed();)
 
 // ── 1. PRODUCTS API (FULL CRUD: GET, POST, PATCH, DELETE) ──────────────────
 app.get('/api/products', async (req, res) => {
@@ -1225,7 +1292,15 @@ app.post('/api/verifications', async (req, res) => {
     if (!targetUserId && phone) {
       let u = await prisma.user.findUnique({ where: { phone } });
       if (!u) {
-        u = await prisma.user.create({ data: encryptUserPII({ phone, passportSeries, pinfl, isVerified: false }) });
+        // Set an unusable random password: this account is created by a KYC
+        // submission, not by a signup, so it must not fall back to a default.
+        u = await prisma.user.create({
+          data: encryptUserPII({
+            phone, passportSeries, pinfl,
+            password: hashPassword(crypto.randomBytes(32).toString('hex')),
+            isVerified: false
+          })
+        });
       }
       targetUserId = u.id;
     }
@@ -1817,7 +1892,22 @@ app.delete('/api/wishlist/:productId', requireAuth, async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`VOLTMAXHUB Backend API Server running on http://localhost:${PORT}`);
-  startTelegramPolling();
+// Refuse to serve traffic against an unusable database.
+assertSchemaReady().then(() => startServer()).catch(err => {
+  console.error('[FATAL] Startup failed:', err.message);
+  process.exit(1);
 });
+
+async function startServer() {
+  // Background jobs that touch the database start only once the schema exists.
+  try {
+    await checkOverdueRentals();
+    await ensureSolarPanelsSeed();
+  } catch (error) {
+    console.error('[WARN] startup job failed:', error.message);
+  }
+  app.listen(PORT, () => {
+    console.log(`VOLTMAXHUB Backend API Server running on http://localhost:${PORT}`);
+    startTelegramPolling();
+  });
+}

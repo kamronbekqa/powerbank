@@ -17,36 +17,59 @@ const ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD || 'admin123';
 let pass = 0, fail = 0;
 const failures = [];
 
-// ── Local DB guard ────────────────────────────────────────────────────────────
-// These tests mutate SiteSettings and register throwaway accounts. The dev DB
-// must be byte-identical before and after, so snapshot on start and restore on
-// exit (including crashes/signals). Never point this at a shared/production DB.
-const DB_PATH = path.resolve(__dirname, '..', 'prisma', 'dev.db');
-const DB_SNAPSHOT = path.join(os.tmpdir(), `voltmaxhub-test-db-${process.pid}.bak`);
-let dbSnapshotted = false;
+// ── Database guard ───────────────────────────────────────────────────────────
+// These tests write to the database (settings, throwaway users, orders, carts).
+// The project now runs on PostgreSQL, so copying a SQLite file would be a no-op.
+// Instead we remember what must be put back and clean up on exit, including on
+// SIGINT/SIGTERM. Never point this at a shared/production database.
+let dbGuard = null;
 
-function snapshotDb() {
-  if (fs.existsSync(DB_PATH)) {
-    fs.copyFileSync(DB_PATH, DB_SNAPSHOT);
-    dbSnapshotted = true;
-  }
-}
-
-function restoreDb() {
-  if (!dbSnapshotted) return;
+async function snapshotDb() {
   try {
-    fs.copyFileSync(DB_SNAPSHOT, DB_PATH);
-    fs.unlinkSync(DB_SNAPSHOT);
-    dbSnapshotted = false;
-  } catch (e) {
-    console.error(`  WARN  could not restore test DB: ${e.message}`);
+    const { PrismaClient } = await import('@prisma/client');
+    const prisma = new PrismaClient();
+    const settings = await prisma.siteSettings.findFirst();
+    // Remember the ids that already exist so we only ever delete rows this run
+    // created — real leads/reviews must survive the suite.
+    const existing = {};
+    for (const model of ['user', 'contactMessage', 'review']) {
+      const rows = await prisma[model].findMany({ select: { id: true } });
+      existing[model] = rows.map(r => r.id);
+    }
+    dbGuard = { prisma, settings, existing };
+    await prisma.$disconnect();
+  } catch {
+    dbGuard = null; // best-effort guard must never block the suite
   }
 }
 
-process.on('exit', restoreDb);
-for (const sig of ['SIGINT', 'SIGTERM']) {
-  process.on(sig, () => { restoreDb(); process.exit(130); });
+async function restoreDb() {
+  if (!dbGuard) return;
+  const { prisma, settings, existing } = dbGuard;
+  dbGuard = null;
+  try {
+    // Child rows first (FK order).
+    await prisma.order.deleteMany({});
+    await prisma.cartItem.deleteMany({});
+    await prisma.wishlistItem.deleteMany({});
+    await prisma.verification.deleteMany({});
+    await prisma.transaction.deleteMany({});
+    // Only rows created by this run.
+    await prisma.review.deleteMany({ where: { id: { notIn: existing.review } } });
+    await prisma.contactMessage.deleteMany({ where: { id: { notIn: existing.contactMessage } } });
+    await prisma.user.deleteMany({ where: { id: { notIn: existing.user } } });
+    if (settings) await prisma.siteSettings.update({ where: { id: 'default' }, data: settings });
+  } catch (e) {
+    console.error(`  WARN  could not restore test data: ${e.message}`);
+  } finally {
+    await prisma.$disconnect();
+  }
 }
+
+for (const sig of ['SIGINT', 'SIGTERM']) {
+  process.on(sig, () => { restoreDb().finally(() => process.exit(130)); });
+}
+
 
 function ok(name, cond, extra = '') {
   if (cond) { pass++; console.log(`  PASS  ${name}`); }
@@ -418,8 +441,9 @@ async function main() {
     console.log('\nFailures:');
     failures.forEach(f => console.log('  - ' + f));
   }
+  await restoreDb();
   process.exit(fail ? 1 : 0);
 }
 
-snapshotDb();
+await snapshotDb();
 main().catch(e => { console.error('Suite crashed:', e); process.exit(2); });

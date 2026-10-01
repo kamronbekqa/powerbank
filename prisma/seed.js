@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { hashPassword } from '../server/lib/security.js';
 
 const prisma = new PrismaClient();
 
@@ -193,7 +194,7 @@ async function main() {
   const clientUser = await prisma.user.create({
     data: {
       phone: '+998901234567',
-      password: 'user123',
+      password: await hashPassword('user123'),
       fullName: 'Alisher Qayumov',
       passportSeries: 'AA1234567',
       pinfl: '31204958390124',
@@ -206,7 +207,7 @@ async function main() {
   const adminUser = await prisma.user.create({
     data: {
       phone: '+998909990011',
-      password: 'admin123',
+      password: await hashPassword('admin123'),
       fullName: 'VOLTMAXHUB Administrator',
       isVerified: true,
       role: 'ADMIN'

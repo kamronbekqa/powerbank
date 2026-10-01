@@ -100,6 +100,18 @@ export function requireAdmin(req, res, next) {
 
 // ── CSRF: signed double-submit cookie ───────────────────────────────────────
 const CSRF_COOKIE = 'csrf_token';
+
+// Never sign with a fixed fallback: fall back to an ephemeral random secret in
+// development, and refuse in production (surfaced by the startup check).
+const EPHEMERAL_CSRF_SECRET = crypto.randomBytes(32).toString('hex');
+function csrfSecret() {
+  const s = process.env.JWT_SECRET;
+  if (s && s.trim()) return s;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET is required in production (CSRF signing).');
+  }
+  return EPHEMERAL_CSRF_SECRET;
+}
 const CSRF_TTL_MS = 8 * 60 * 60 * 1000; // 8h
 
 function b64url(buf) {
@@ -110,7 +122,7 @@ export function issueCsrfToken(res) {
   const payload = b64url(JSON.stringify({ ts: Date.now() }));
   const nonce = crypto.randomBytes(16).toString('base64url');
   const body = `${payload}.${nonce}`;
-  const sig = crypto.createHmac('sha256', process.env.JWT_SECRET || 'dev').update(body).digest('base64url');
+  const sig = crypto.createHmac('sha256', csrfSecret()).update(body).digest('base64url');
   const token = `${body}.${sig}`;
   res.cookie(CSRF_COOKIE, token, {
     httpOnly: false, // must be readable by JS to echo back in header
@@ -127,7 +139,7 @@ function verifyCsrfToken(token) {
   if (parts.length !== 3) return false;
   const [payload, nonce, sig] = parts;
   const expected = crypto
-    .createHmac('sha256', process.env.JWT_SECRET || 'dev')
+    .createHmac('sha256', csrfSecret())
     .update(`${payload}.${nonce}`)
     .digest('base64url');
   const a = Buffer.from(sig);

@@ -1,5 +1,5 @@
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -10,7 +10,7 @@ generator client {
 model User {
   id             String         @id @default(uuid())
   phone          String         @unique
-  password       String         @default("123456")
+  password       String
   fullName       String?
   passportSeries String?
   pinfl          String?
@@ -161,7 +161,7 @@ model SiteSettings {
   botChatId         String?  @default("")
   penaltyRate       Float?   @default(0.5)
   legalNoticeDays   Int?     @default(3)
-  visitCount        Int      @default(1420)
+  visitCount        Int      @default(0)
   deliveryStartHour Int?     @default(6) // 6 AM
   deliveryEndHour   Int?     @default(9) // 9 AM
   deliverySlotLabel String?  @default("06:00 - 09:00 (Ertalabki)")
