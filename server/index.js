@@ -8,7 +8,7 @@ import cookieParser from 'cookie-parser';
 import crypto from 'node:crypto';
 import {
   hashPassword, verifyPassword, isHashed, publicUser,
-  requireAuth, requireAdmin,
+  requireAuth, requireAdmin, optionalAuth,
   csrfProtection, issueCsrfToken, rateLimit, securityHeaders,
   v, ValidationError, errorHandler
 } from './lib/security.js';
@@ -581,7 +581,7 @@ app.get('/api/orders', requireAuth, async (req, res) => {
   }
 });
 
-app.post('/api/orders', async (req, res) => {
+app.post('/api/orders', optionalAuth, async (req, res) => {
   try {
     const {
       userId,
@@ -599,15 +599,25 @@ app.post('/api/orders', async (req, res) => {
       selfieUrl
     } = req.body;
 
-    if (type === 'RENT' && !/^\d{14}$/.test(String(pinfl || ''))) {
+    // Pay-on-delivery (COD) lets a customer place a pre-order before KYC: the
+    // admin collects documents and cash when the unit is handed over.
+    // Online prepayment keeps the original strict KYC requirement.
+    const paymentMethod = req.body?.paymentMethod === 'ONLINE' ? 'ONLINE' : 'COD';
+    const requiresKycNow = paymentMethod === 'ONLINE';
+
+    if (type === 'RENT' && requiresKycNow && !/^\d{14}$/.test(String(pinfl || ''))) {
       return res.status(400).json({ error: 'Ijara uchun 14 xonali PINFL/JSHSHIR majburiy.' });
     }
-    if (type === 'RENT' && (!String(passportSeries || '').trim() || !passportFront || !selfieUrl)) {
+    if (type === 'RENT' && requiresKycNow && (!String(passportSeries || '').trim() || !passportFront || !selfieUrl)) {
       return res.status(400).json({ error: 'Ijara uchun pasport seriyasi, pasport rasmi va pasport bilan selfi majburiy.' });
     }
 
     let user;
-    if (userId) {
+    // A signed-in customer always orders as themselves: never trust a userId
+    // supplied in the request body (that would let anyone order as another user).
+    if (req.user) {
+      user = await prisma.user.findUnique({ where: { id: req.user.id } });
+    } else if (userId) {
       user = await prisma.user.findUnique({ where: { id: userId } });
     }
     if (!user && phone) {
@@ -665,7 +675,12 @@ app.post('/api/orders', async (req, res) => {
         startDate: startDate ? new Date(startDate) : null,
         endDate: endDate ? new Date(endDate) : null,
         totalAmount: Number(totalAmount),
-        status: type === 'BUY' ? 'APPROVED' : (user.isVerified ? 'APPROVED' : 'PENDING')
+        // A pre-order always starts in PENDING ("Kutilmoqda"); the admin moves it
+        // through PREPARING -> DELIVERING -> DELIVERED_PAID as it is fulfilled.
+        status: 'PENDING',
+        paymentMethod,
+        paymentStatus: paymentMethod === 'ONLINE' ? 'PAID' : 'UNPAID',
+        note: req.body?.note ? String(req.body.note).slice(0, 500) : null
       },
       include: {
         product: true,
@@ -681,6 +696,7 @@ app.post('/api/orders', async (req, res) => {
         `⚡️ *Mahsulot:* ${order.product?.title || 'Generator'}\n` +
         `📋 *Turi:* ${type === 'RENT' ? 'Kunlik Ijara' : 'Xarid (Sotuv)'}\n` +
         `💰 *Summa:* ${Number(totalAmount).toLocaleString()} UZS\n` +
+        `🚲 *To'lov:* ${paymentMethod === 'ONLINE' ? 'Onlayn (oldindan)' : 'Naqd (yetkazishda)'}\n` +
         `📅 *Sana:* ${new Date().toLocaleDateString('uz-UZ')}`
     }).catch(err => console.error('[Order Telegram Error]:', err));
 
@@ -690,14 +706,37 @@ app.post('/api/orders', async (req, res) => {
   }
 });
 
+// Fulfilment chain for pay-on-delivery pre-orders. An admin may move an order
+// forward (or cancel it); jumping backwards is rejected so the customer's
+// timeline stays monotonic.
+const ORDER_FLOW = ['PENDING', 'PREPARING', 'DELIVERING', 'DELIVERED_PAID'];
+const TERMINAL_ORDER_STATES = ['COMPLETED', 'CANCELLED'];
+
 app.patch('/api/orders/:id/status', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, paymentStatus } = req.body;
+
+    const current = await prisma.order.findUnique({ where: { id }, select: { id: true, status: true, paymentStatus: true, type: true } });
+    if (!current) return res.status(404).json({ error: 'Buyurtma topilmadi.' });
+
+    if (ORDER_FLOW.includes(current.status) && ORDER_FLOW.includes(status)) {
+      const from = ORDER_FLOW.indexOf(current.status);
+      const to = ORDER_FLOW.indexOf(status);
+      if (to < from) {
+        return res.status(400).json({ error: 'Buyurtma holatini orqaga qaytarib bo\'lmaydi.' });
+      }
+    }
+
+    // Cash is collected on handover, so delivering marks the order paid.
+    const autoPaid = status === 'DELIVERED_PAID';
     const order = await prisma.order.update({
       where: { id },
-      data: { status },
-      include: { user: true, product: true }
+      data: {
+        status,
+        ...(paymentStatus ? { paymentStatus } : autoPaid ? { paymentStatus: 'PAID' } : {})
+      },
+      include: { user: { select: ORDER_USER_FIELDS }, product: true }
     });
     res.json(order);
   } catch (error) {
@@ -842,6 +881,8 @@ async function loadSettings() {
 }
 
 // Public-safe settings for anonymous visitors (contact info only).
+// NOTE: visitCount is deliberately NOT exposed here — it is admin-only data and
+// must not be readable by anonymous visitors (not even via devtools).
 app.get('/api/settings/public', async (_req, res) => {
   try {
     const s = await loadSettings();
@@ -852,7 +893,6 @@ app.get('/api/settings/public', async (_req, res) => {
       telegram: s.telegram,
       instagram: s.instagram,
       address: s.address,
-      visitCount: s.visitCount,
       deliverySlotLabel: s.deliverySlotLabel,
       deliveryStartHour: s.deliveryStartHour,
       deliveryEndHour: s.deliveryEndHour,
@@ -1129,19 +1169,20 @@ app.post('/api/auth/google', async (req, res) => {
 });
 
 
+// Visitor counter. Anonymous, read/write by design: every page view calls this.
+// Starts from a real 0 (no fabricated seed value) and increments atomically so
+// concurrent page loads cannot lose an increment.
 app.post('/api/stats/visit', async (req, res) => {
   try {
-    let settings = await prisma.siteSettings.findUnique({ where: { id: 'default' } });
-    if (!settings) {
-      settings = await prisma.siteSettings.create({
-        data: { id: 'default', visitCount: 1421 }
-      });
-    } else {
-      settings = await prisma.siteSettings.update({
-        where: { id: 'default' },
-        data: { visitCount: settings.visitCount + 1 }
-      });
-    }
+    await prisma.siteSettings.upsert({
+      where: { id: 'default' },
+      update: { visitCount: { increment: 1 } },
+      create: { id: 'default', visitCount: 1 }
+    });
+    const settings = await prisma.siteSettings.findUnique({
+      where: { id: 'default' },
+      select: { visitCount: true }
+    });
     res.json({ success: true, visitCount: settings.visitCount });
   } catch (error) {
     console.error('[API ERROR]', error.message); res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
@@ -1637,6 +1678,144 @@ async function startTelegramPolling() {
 
 // ── Global error handler: no stack traces, SQL, paths or secrets to clients ──
 app.use(errorHandler);
+
+// ── CART API (server-side; guests use localStorage on the client) ─────────────
+const CART_PRODUCT_SELECT = {
+  id: true, title: true, capacity: true, category: true,
+  buyPrice: true, rentPrice: true, stock: true, isAvailable: true,
+  images: true, description: true
+};
+
+function withImages(product) {
+  if (!product) return product;
+  let images = [];
+  try { images = JSON.parse(product.images || '[]'); } catch { images = []; }
+  return { ...product, images };
+}
+
+app.get('/api/cart', requireAuth, async (req, res) => {
+  try {
+    const items = await prisma.cartItem.findMany({
+      where: { userId: req.user.id },
+      include: { product: { select: CART_PRODUCT_SELECT } },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(items.map(i => ({ ...i, product: withImages(i.product) })));
+  } catch (error) {
+    console.error('[API ERROR] GET /api/cart:', error.message);
+    res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
+  }
+});
+
+app.post('/api/cart', requireAuth, async (req, res) => {
+  try {
+    const { productId, quantity = 1, type = 'RENT' } = req.body || {};
+    if (!productId) return res.status(400).json({ error: 'Mahsulot tanlanmagan.' });
+    if (!['BUY', 'RENT'].includes(type)) return res.status(400).json({ error: 'Noto\'g\'ri savdo turi.' });
+    const qty = Math.min(Math.max(parseInt(quantity, 10) || 1, 1), 99);
+
+    const product = await prisma.product.findUnique({ where: { id: productId }, select: { id: true, stock: true } });
+    if (!product) return res.status(404).json({ error: 'Mahsulot topilmadi.' });
+    if (product.stock < 1) return res.status(400).json({ error: 'Mahsulot omborda yo\'q.' });
+
+    // One row per (user, product, type): repeated adds bump the quantity.
+    const item = await prisma.cartItem.upsert({
+      where: { userId_productId_type: { userId: req.user.id, productId, type } },
+      update: { quantity: { increment: qty } },
+      create: { userId: req.user.id, productId, type, quantity: qty },
+      include: { product: { select: CART_PRODUCT_SELECT } }
+    });
+    res.status(201).json({ ...item, product: withImages(item.product) });
+  } catch (error) {
+    console.error('[API ERROR] POST /api/cart:', error.message);
+    res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
+  }
+});
+
+app.patch('/api/cart/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const qty = Math.min(Math.max(parseInt(req.body?.quantity, 10) || 0, 0), 99);
+    const owned = await prisma.cartItem.findFirst({ where: { id, userId: req.user.id }, select: { id: true } });
+    if (!owned) return res.status(404).json({ error: 'Savatda bunday mahsulot yo\'q.' });
+    if (qty === 0) {
+      await prisma.cartItem.delete({ where: { id } });
+      return res.json({ success: true, removed: true });
+    }
+    const item = await prisma.cartItem.update({
+      where: { id }, data: { quantity: qty },
+      include: { product: { select: CART_PRODUCT_SELECT } }
+    });
+    res.json({ ...item, product: withImages(item.product) });
+  } catch (error) {
+    console.error('[API ERROR] PATCH /api/cart:', error.message);
+    res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
+  }
+});
+
+app.delete('/api/cart/:id', requireAuth, async (req, res) => {
+  try {
+    await prisma.cartItem.deleteMany({ where: { id: req.params.id, userId: req.user.id } });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[API ERROR] DELETE /api/cart:', error.message);
+    res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
+  }
+});
+
+app.delete('/api/cart', requireAuth, async (req, res) => {
+  try {
+    await prisma.cartItem.deleteMany({ where: { userId: req.user.id } });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[API ERROR] DELETE /api/cart:', error.message);
+    res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
+  }
+});
+
+// ── WISHLIST API (signed-in users only) ───────────────────────────────────────
+app.get('/api/wishlist', requireAuth, async (req, res) => {
+  try {
+    const items = await prisma.wishlistItem.findMany({
+      where: { userId: req.user.id },
+      include: { product: { select: CART_PRODUCT_SELECT } },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(items.map(i => ({ ...i, product: withImages(i.product) })));
+  } catch (error) {
+    console.error('[API ERROR] GET /api/wishlist:', error.message);
+    res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
+  }
+});
+
+app.post('/api/wishlist', requireAuth, async (req, res) => {
+  try {
+    const { productId } = req.body || {};
+    if (!productId) return res.status(400).json({ error: 'Mahsulot tanlanmagan.' });
+    const product = await prisma.product.findUnique({ where: { id: productId }, select: { id: true } });
+    if (!product) return res.status(404).json({ error: 'Mahsulot topilmadi.' });
+    const item = await prisma.wishlistItem.upsert({
+      where: { userId_productId: { userId: req.user.id, productId } },
+      update: {},
+      create: { userId: req.user.id, productId },
+      include: { product: { select: CART_PRODUCT_SELECT } }
+    });
+    res.status(201).json({ ...item, product: withImages(item.product) });
+  } catch (error) {
+    console.error('[API ERROR] POST /api/wishlist:', error.message);
+    res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
+  }
+});
+
+app.delete('/api/wishlist/:productId', requireAuth, async (req, res) => {
+  try {
+    await prisma.wishlistItem.deleteMany({ where: { userId: req.user.id, productId: req.params.productId } });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[API ERROR] DELETE /api/wishlist:', error.message);
+    res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`VOLTMAXHUB Backend API Server running on http://localhost:${PORT}`);

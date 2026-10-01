@@ -40,7 +40,7 @@ export default function AdminCRM({
   const [companyTelegram, setCompanyTelegram] = useState(siteSettings?.telegram || 'https://t.me/voltmaxhub_uz');
   const [companyInstagram, setCompanyInstagram] = useState(siteSettings?.instagram || 'https://instagram.com/voltmaxhub');
   const [companyName, setCompanyName] = useState(siteSettings?.companyName || 'VOLTMAXHUB');
-  const [visitCountInput, setVisitCountInput] = useState(siteSettings?.visitCount !== undefined ? siteSettings.visitCount : 1420);
+  const [visitCountInput, setVisitCountInput] = useState(siteSettings?.visitCount ?? 0);
   const [botChatId, setBotChatId] = useState(siteSettings?.botChatId || '');
   const [botToken, setBotToken] = useState('');
   const [penaltyRate, setPenaltyRate] = useState(siteSettings?.penaltyRate !== undefined ? siteSettings.penaltyRate : 0.5);
@@ -262,16 +262,31 @@ export default function AdminCRM({
     }
   };
   const at = AT[lang] || AT.UZ;
+  // Pay-on-delivery fulfilment chain comes first; the older rental states remain
+  // available so existing orders keep working.
   const orderStatusLabels = lang === 'RU' ? {
-    PENDING: 'Ожидает', APPROVED: 'Подтверждён', ACTIVE: 'Активная аренда', COMPLETED: 'Завершён',
+    PENDING: 'Ожидает', PREPARING: 'Готовится', DELIVERING: 'Доставляется', DELIVERED_PAID: 'Доставлено и оплачено',
+    APPROVED: 'Подтверждён', ACTIVE: 'Активная аренда', COMPLETED: 'Завершён',
     OVERDUE: 'Просрочен', LEGAL_PROCESS: 'Юридический процесс', CANCELLED: 'Отменён'
   } : lang === 'EN' ? {
-    PENDING: 'Pending', APPROVED: 'Approved', ACTIVE: 'Active rental', COMPLETED: 'Completed',
+    PENDING: 'Pending', PREPARING: 'Preparing', DELIVERING: 'Out for delivery', DELIVERED_PAID: 'Delivered & paid',
+    APPROVED: 'Approved', ACTIVE: 'Active rental', COMPLETED: 'Completed',
     OVERDUE: 'Overdue', LEGAL_PROCESS: 'Legal process', CANCELLED: 'Cancelled'
   } : {
-    PENDING: 'Kutilmoqda', APPROVED: 'Tasdiqlangan', ACTIVE: 'Faol ijara', COMPLETED: 'Yakunlangan',
+    PENDING: 'Kutilmoqda', PREPARING: 'Tayyorlanmoqda', DELIVERING: 'Yetkazilmoqda', DELIVERED_PAID: 'Yetkazildi va to‘landi',
+    APPROVED: 'Tasdiqlangan', ACTIVE: 'Faol ijara', COMPLETED: 'Yakunlangan',
     OVERDUE: 'Muddati o‘tgan', LEGAL_PROCESS: 'Huquqiy jarayonda', CANCELLED: 'Bekor qilingan'
   };
+  const paymentMethodLabels = lang === 'RU'
+    ? { COD: 'Наличными при доставке', ONLINE: 'Онлайн (предоплата)' }
+    : lang === 'EN'
+    ? { COD: 'Cash on delivery', ONLINE: 'Online (prepaid)' }
+    : { COD: 'Naqd (yetkazishda)', ONLINE: 'Onlayn (oldindan to‘lov)' };
+  const paymentStatusLabels = lang === 'RU'
+    ? { UNPAID: 'Не оплачено', PAID: 'Оплачено' }
+    : lang === 'EN'
+    ? { UNPAID: 'Unpaid', PAID: 'Paid' }
+    : { UNPAID: 'To‘lanmagan', PAID: 'To‘langan' };
   const [selectedKycDoc, setSelectedKycDoc] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
 
@@ -1625,9 +1640,15 @@ export default function AdminCRM({
                         <td>{startStr} — {endStr}</td>
                         <td><strong>{amount.toLocaleString()} UZS</strong></td>
                         <td>
-                          <span className={`badge ${order.status === 'ACTIVE' || order.status === 'APPROVED' ? 'badge-success' : order.status === 'OVERDUE' || order.status === 'LEGAL_PROCESS' ? 'badge-danger' : 'badge-info'}`}>
+                          <span className={`badge ${order.status === 'ACTIVE' || order.status === 'APPROVED' || order.status === 'DELIVERED_PAID' ? 'badge-success' : order.status === 'OVERDUE' || order.status === 'LEGAL_PROCESS' ? 'badge-danger' : 'badge-info'}`}>
                             {orderStatusLabels[order.status] || order.status}
                           </span>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--meco-text-sub)', marginTop: '0.25rem' }}>
+                            {paymentMethodLabels[order.paymentMethod || 'COD']}
+                          </div>
+                          <div style={{ fontSize: '0.7rem', marginTop: '0.15rem', color: order.paymentStatus === 'PAID' ? '#059669' : '#b45309', fontWeight: '700' }}>
+                            {paymentStatusLabels[order.paymentStatus || 'UNPAID']}
+                          </div>
                         </td>
                         <td>
                           <select 

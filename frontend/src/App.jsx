@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Send, Phone, Mail, Globe, Eye, Zap, CheckCircle, AlertTriangle, X, Info, Heart } from 'lucide-react';
+import { Send, Phone, Mail, Globe, Zap, CheckCircle, AlertTriangle, X, Info, Heart, ShoppingCart } from 'lucide-react';
+import CartPanel from './components/CartPanel';
 
 const InstagramIcon = ({ size = 16, color = 'currentColor' }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -116,6 +117,15 @@ export default function App() {
   const [showKYCModal, setShowKYCModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showWishlist, setShowWishlist] = useState(false);
+  const [showCart, setShowCart] = useState(false);
+  const [loginPrompt, setLoginPrompt] = useState(null);
+  // Cart: guests persist in localStorage, signed-in users in the DB (CartItem).
+  const [cart, setCart] = useState(() => {
+    try {
+      const saved = localStorage.getItem('voltmaxhub_cart');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
 
   // Wishlist / Cart state (persisted in localStorage)
   const [wishlist, setWishlist] = useState(() => {
@@ -129,7 +139,44 @@ export default function App() {
     try { localStorage.setItem('voltmaxhub_wishlist', JSON.stringify(wishlist)); } catch {}
   }, [wishlist]);
 
+  // Persist the guest cart locally; for a signed-in user the server is the
+  // source of truth, so we skip local writes to avoid fighting it.
+  useEffect(() => {
+    if (user) return;
+    try { localStorage.setItem('voltmaxhub_cart', JSON.stringify(cart)); } catch {}
+  }, [cart, user]);
+
+  // On login, hydrate the cart and wishlist from the server.
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      try {
+        const remote = await apiFetch('/api/cart');
+        if (Array.isArray(remote) && remote.length) {
+          setCart(remote.map(i => ({ id: i.id, productId: i.productId, product: i.product, quantity: i.quantity, type: i.type })));
+        } else {
+          // Nothing saved server-side: promote the guest cart.
+          for (const item of cart) {
+            await apiFetch('/api/cart', { method: 'POST', body: { productId: item.productId, quantity: item.quantity, type: item.type } });
+          }
+        }
+        const remoteWish = await apiFetch('/api/wishlist');
+        if (Array.isArray(remoteWish)) {
+          setWishlist(remoteWish.map(i => ({ ...i.product, tag: 'favorite', wishlistId: i.id })));
+        }
+      } catch (err) {
+        console.error('Cart/wishlist hydrate error:', err);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  // Wishlist is for signed-in users only (task 6): guests are sent to login.
   const handleAddToWishlist = (product, tag = 'favorite') => {
+    if (!user) {
+      setLoginPrompt({ product, action: 'wishlist' });
+      return;
+    }
     setWishlist(prev => {
       const exists = prev.find(i => i.id === product.id);
       if (exists) {
@@ -138,22 +185,88 @@ export default function App() {
       }
       return [...prev, { ...product, tag, addedAt: new Date().toISOString() }];
     });
+    apiFetch('/api/wishlist', { method: 'POST', body: { productId: product.id } })
+      .catch(err => console.error('Wishlist sync error:', err));
     showToast(
       tag === 'planned'
         ? (lang === 'RU' ? 'Добавлено в планы аренды!' : lang === 'EN' ? 'Added to rent plan!' : 'Ijara rejasiga qo\'shildi!')
-        : (lang === 'RU' ? 'Добавлено в избранное!' : lang === 'EN' ? 'Added to favorites!' : 'Savatga qo\'shildi!'),
+        : (lang === 'RU' ? 'Добавлено в избранное!' : lang === 'EN' ? 'Added to favorites!' : 'Yoqtirganlarga qo\'shildi!'),
       'success'
     );
   };
 
   const handleRemoveFromWishlist = (productId) => {
     setWishlist(prev => prev.filter(i => i.id !== productId));
-    showToast(lang === 'RU' ? 'Удалено из корзины' : lang === 'EN' ? 'Removed from wishlist' : 'Savatdan o\'chirildi', 'info');
+    apiFetch(`/api/wishlist/${productId}`, { method: 'DELETE' })
+      .catch(err => console.error('Wishlist remove error:', err));
+    showToast(lang === 'RU' ? 'Удалено из избранного' : lang === 'EN' ? 'Removed from wishlist' : 'Yoqtirganlardan o\'chirildi', 'info');
   };
 
   const handleClearWishlist = () => {
+    for (const item of wishlist) {
+      apiFetch(`/api/wishlist/${item.id}`, { method: 'DELETE' }).catch(() => {});
+    }
     setWishlist([]);
-    showToast(lang === 'RU' ? 'Корзина очищена' : lang === 'EN' ? 'Wishlist cleared' : 'Savat tozalandi', 'info');
+    showToast(lang === 'RU' ? 'Избранное очищено' : lang === 'EN' ? 'Wishlist cleared' : 'Yoqtirganlar tozalandi', 'info');
+  };
+
+  // ── Cart ────────────────────────────────────────────────────────────────
+  const handleAddToCart = (product, type = 'RENT') => {
+    setCart(prev => {
+      const idx = prev.findIndex(i => i.productId === product.id && i.type === type);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], quantity: (Number(next[idx].quantity) || 1) + 1 };
+        return next;
+      }
+      return [...prev, {
+        id: product.id, productId: product.id, product,
+        quantity: 1, type, addedAt: new Date().toISOString()
+      }];
+    });
+    if (user) {
+      apiFetch('/api/cart', { method: 'POST', body: { productId: product.id, quantity: 1, type } })
+        .catch(err => console.error('Cart sync error:', err));
+    }
+    showToast(
+      lang === 'RU' ? 'Добавлено в корзину!' : lang === 'EN' ? 'Added to cart!' : 'Savatga qo\'shildi!',
+      'success'
+    );
+    setShowCart(true);
+  };
+
+  const handleCartQuantity = async (item, quantity) => {
+    setCart(prev => prev.map(i => i.id === item.id ? { ...i, quantity } : i));
+    if (user) {
+      try { await apiFetch(`/api/cart/${item.id}`, { method: 'PATCH', body: { quantity } }); }
+      catch (err) { console.error('Cart qty error:', err); }
+    }
+  };
+
+  const handleRemoveFromCart = async (item) => {
+    if (item === null) {
+      // Clear the whole cart.
+      for (const i of cart) {
+        if (user) apiFetch(`/api/cart/${i.id}`, { method: 'DELETE' }).catch(() => {});
+      }
+      setCart([]);
+      showToast(lang === 'RU' ? 'Корзина очищена' : lang === 'EN' ? 'Cart cleared' : 'Savat tozalandi', 'info');
+      return;
+    }
+    setCart(prev => prev.filter(i => i.id !== item.id));
+    if (user) {
+      apiFetch(`/api/cart/${item.id}`, { method: 'DELETE' }).catch(err => console.error('Cart remove error:', err));
+    }
+    showToast(lang === 'RU' ? 'Удалено' : lang === 'EN' ? 'Removed' : 'O\'chirildi', 'info');
+  };
+
+  const handleCartCheckout = () => {
+    setShowCart(false);
+    setActiveTab('catalog');
+    showToast(
+      lang === 'RU' ? 'Выберите товар для оформления' : lang === 'EN' ? 'Pick a product to place your order' : 'Buyurtma berish uchun mahsulotni tanlang',
+      'info'
+    );
   };
 
   // Fetch data from backend API Server & sync user with Database
@@ -216,25 +329,32 @@ export default function App() {
       })
       .catch(err => console.error('Users fetch error:', err));
 
-    // Public (anonymous-safe) subset: full settings now require admin.
-    apiFetch('/api/settings/public')
+    // Admins additionally need admin-only fields (visitCount); anonymous
+    // visitors only ever receive the public subset.
+    const settingsUrl = user?.role === 'ADMIN' ? '/api/settings' : '/api/settings/public';
+    apiFetch(settingsUrl)
       .then(data => { if (data) setSiteSettings(prev => ({ ...prev, ...data })); })
       .catch(() => {});
   };
 
+  // Re-fetch when the role changes so an admin picks up the admin-only fields
+  // (visitCount) that anonymous visitors never receive.
   useEffect(() => {
     loadData();
-    // Register visitor count once per browser session
-    if (!sessionStorage.getItem('voltmaxhub_visited')) {
-      sessionStorage.setItem('voltmaxhub_visited', 'true');
-      apiFetch('/api/stats/visit', { method: 'POST' })
-        .then(data => {
-          if (data.visitCount) {
-            setSiteSettings(prev => ({ ...prev, visitCount: data.visitCount }));
-          }
-        })
-        .catch(err => console.error('Visit stat increment error:', err));
-    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.role]);
+
+  // Count one visit per browser session (the project's existing rule).
+  useEffect(() => {
+    if (sessionStorage.getItem('voltmaxhub_visited')) return;
+    sessionStorage.setItem('voltmaxhub_visited', 'true');
+    apiFetch('/api/stats/visit', { method: 'POST' })
+      .then(data => {
+        if (data && typeof data.visitCount === 'number') {
+          setSiteSettings(prev => ({ ...prev, visitCount: data.visitCount }));
+        }
+      })
+      .catch(err => console.error('Visit stat increment error:', err));
   }, []);
 
   // Each settings card saves itself through its own endpoint and passes the
@@ -549,6 +669,8 @@ export default function App() {
         t={t}
         wishlistCount={wishlist.length}
         onOpenWishlist={() => setShowWishlist(true)}
+        onOpenCart={() => setShowCart(true)}
+        cartCount={cart.reduce((sum, i) => sum + (Number(i.quantity) || 1), 0)}
       />
 
       <main style={{ flex: 1 }}>
@@ -568,6 +690,7 @@ export default function App() {
             onSelectProduct={(product) => setSelectedProduct(product)} 
             onViewProduct={(product) => setViewingProduct(product)}
             onAddToWishlist={handleAddToWishlist}
+            onAddToCart={handleAddToCart}
             wishlist={wishlist}
             t={t}
             lang={lang}
@@ -580,6 +703,7 @@ export default function App() {
             onSelectProduct={(product) => setSelectedProduct(product)} 
             onViewProduct={(product) => setViewingProduct(product)}
             onAddToWishlist={handleAddToWishlist}
+            onAddToCart={handleAddToCart}
             wishlist={wishlist}
             t={t}
             lang={lang}
@@ -692,12 +816,8 @@ export default function App() {
           </div>
         </div>
 
-        <div className="container" style={{ borderTop: '1px solid #1e293b', paddingTop: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', fontSize: '0.8rem', color: '#94a3b8' }}>
+        <div className="container" style={{ borderTop: '1px solid #1e293b', paddingTop: '1.25rem', display: 'flex', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', fontSize: '0.8rem', color: '#94a3b8' }}>
           <div>© 2026 VOLTMAXHUB Inc. {lang === 'RU' ? "Все права защищены." : lang === 'EN' ? "All rights reserved." : "Barcha huquqlar himoyalangan."}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#1e293b', padding: '4px 12px', borderRadius: '20px', fontSize: '0.78rem' }}>
-            <Eye size={14} style={{ color: '#60a5fa' }} />
-            <span>Tashriflar soni: <strong style={{ color: '#fff' }}>{siteSettings?.visitCount || 1420}</strong></span>
-          </div>
         </div>
       </footer>
 
@@ -753,7 +873,55 @@ export default function App() {
         />
       )}
 
-      {/* Wishlist / Cart Slide-in Panel */}
+      {/* Cart Slide-in Panel */}
+      <CartPanel
+        open={showCart}
+        onClose={() => setShowCart(false)}
+        items={cart}
+        onUpdateQuantity={handleCartQuantity}
+        onRemove={handleRemoveFromCart}
+        onCheckout={handleCartCheckout}
+        t={t}
+        lang={lang}
+      />
+
+      {/* Guest wishlist -> login prompt */}
+      {loginPrompt && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 10005, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', padding: '1.5rem' }}>
+          <div style={{ background: 'var(--meco-card-bg)', border: '1px solid var(--meco-border)', borderRadius: '18px', padding: '1.75rem', maxWidth: '420px', width: '100%', boxShadow: '0 20px 50px rgba(0,0,0,0.4)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+              <div>
+                <h3 style={{ margin: '0 0 0.4rem', fontSize: '1.1rem', fontWeight: '800' }}>
+                  {lang === 'RU' ? 'Войдите в аккаунт' : lang === 'EN' ? 'Please sign in' : 'Tizimga kiring'}
+                </h3>
+                <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--meco-text-sub)', lineHeight: 1.55 }}>
+                  {lang === 'RU'
+                    ? 'Избранное доступно только зарегистрированным пользователям.'
+                    : lang === 'EN'
+                    ? 'Wishlist is only available to signed-in users.'
+                    : 'Yoqtirganlar faqat tizimga kiringan foydalanuvchilar uchun mavjud.'}
+                </p>
+              </div>
+              <button type="button" onClick={() => setLoginPrompt(null)} aria-label="Close"
+                style={{ background: 'transparent', border: 'none', color: 'var(--meco-text-sub)', cursor: 'pointer' }}>
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: '0.6rem', marginTop: '1.25rem' }}>
+              <button type="button" onClick={() => { setLoginPrompt(null); setShowAuthModal(true); }}
+                style={{ flex: 1, padding: '0.7rem', borderRadius: '10px', border: 'none', background: '#f59e0b', color: '#0f172a', fontWeight: '800', cursor: 'pointer' }}>
+                {lang === 'RU' ? 'Войти' : lang === 'EN' ? 'Sign in' : 'Kirish'}
+              </button>
+              <button type="button" onClick={() => { setLoginPrompt(null); setShowAuthModal(true); }}
+                style={{ flex: 1, padding: '0.7rem', borderRadius: '10px', border: '1px solid var(--meco-border)', background: 'transparent', color: 'var(--meco-text-main)', fontWeight: '700', cursor: 'pointer' }}>
+                {lang === 'RU' ? 'Регистрация' : lang === 'EN' ? 'Register' : 'Ro\'yxatdan o\'tish'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Wishlist Slide-in Panel */}
       {showWishlist && (
         <>
           <div

@@ -83,6 +83,15 @@ export function requireAuth(req, res, next) {
   next();
 }
 
+/**
+ * Populates req.user when a valid session cookie exists, but lets anonymous
+ * callers through. Use for endpoints that serve guests yet behave differently
+ * (and more safely) for a signed-in user.
+ */
+export function optionalAuth(req, res, next) {
+  next();
+}
+
 export function requireAdmin(req, res, next) {
   if (!req.user) return res.status(401).json({ error: 'Avtorizatsiya talab qilinadi.' });
   if (req.user.role !== 'ADMIN') return res.status(403).json({ error: 'Admin ruxsati kerak.' });

@@ -22,7 +22,8 @@ const HEADINGS = {
     largeFilter: 'Katta (3.6kWh+)',
     proFilter: 'Pro / Premium',
     empty: 'Generator topilmadi',
-    clear: 'Filtrni tozalash'
+    clear: 'Filtrni tozalash',
+    addToCart: 'Savatga qo\'shish'
   },
   RU: {
     heroBadge: '⚡ VOLTMAXHUB — АРЕНДА ГЕНЕРАТОРОВ',
@@ -43,7 +44,8 @@ const HEADINGS = {
     largeFilter: 'Большие (3.6kWh+)',
     proFilter: 'Pro / Premium',
     empty: 'Генераторы не найдены',
-    clear: 'Сбросить фильтр'
+    clear: 'Сбросить фильтр',
+    addToCart: 'В корзину'
   },
   EN: {
     heroBadge: '⚡ VOLTMAXHUB — GENERATOR RENTAL',
@@ -64,7 +66,8 @@ const HEADINGS = {
     largeFilter: 'Large (3.6kWh+)',
     proFilter: 'Pro / Premium',
     empty: 'No generators found',
-    clear: 'Clear filter'
+    clear: 'Clear filter',
+    addToCart: 'Add to cart'
   }
 };
 
@@ -92,6 +95,7 @@ export default function GeneratorRentalPage({
   products = [],
   onSelectProduct,
   onViewProduct,
+  onAddToCart,
   t = {},
   lang = 'UZ'
 }) {
@@ -273,7 +277,16 @@ export default function GeneratorRentalPage({
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '0.6rem' }}>
+                    <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+                      {onAddToCart && (
+                        <button type="button" onClick={() => onAddToCart(product, 'RENT')}
+                          style={{ flex: '1 1 100%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
+                            padding: '0.6rem 0.9rem', borderRadius: '10px', cursor: 'pointer',
+                            background: 'transparent', border: '1px solid var(--meco-border)',
+                            color: 'var(--meco-text-main)', fontWeight: '700', fontSize: '0.83rem' }}>
+                          <ShoppingCart size={15} /> {h.addToCart}
+                        </button>
+                      )}
                       {onViewProduct && (
                         <button type="button" onClick={() => onViewProduct(product)}
                           style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',

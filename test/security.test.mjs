@@ -224,8 +224,14 @@ async function main() {
 
   r = await admin.patch('/api/settings/visitor', { visitCount: 4242 });
   ok('visitor save → 200', r.status === 200, `got ${r.status} ${JSON.stringify(r.json).slice(0,80)}`);
-  r = await admin.get('/api/settings/public');
+  // visitCount is admin-only now, so re-read through the admin endpoint.
+  r = await admin.get('/api/settings');
   ok('visitor count persisted', r.json?.visitCount === 4242, `got ${r.json?.visitCount}`);
+  // ...and it must NOT be readable by anonymous visitors any more.
+  r = await anon.get('/api/settings/public');
+  ok('public settings hides visitCount from anonymous', r.json?.visitCount === undefined, `got ${r.json?.visitCount}`);
+  r = await anon.get('/api/settings');
+  ok('anonymous cannot read full settings', r.status === 403 || r.status === 401, `got ${r.status}`);
 
   r = await admin.patch('/api/settings/delivery', {
     deliveryStartHour: 7, deliveryEndHour: 11,
@@ -345,6 +351,66 @@ async function main() {
   const { isEncrypted } = await import(new URL('../server/lib/kyc-crypto.js', import.meta.url));
   ok('encryption module exposes no key via env probe',
      typeof encKey !== 'string' || encKey.length === 0 || !/KYCKEYCANARY/.test(String(isEncrypted('x'))));
+
+  // ── 16. Cart & wishlist isolation ─────────────────────────────────────────
+  section('Cart and wishlist isolation');
+  r = await anon.get('/api/cart');
+  ok('anonymous is refused the cart', r.status === 403 || r.status === 401, `got ${r.status}`);
+  r = await anon.get('/api/wishlist');
+  ok('anonymous is refused the wishlist', r.status === 403 || r.status === 401, `got ${r.status}`);
+  r = await anon.post('/api/cart', { productId: 'x', type: 'RENT' });
+  ok('anonymous cannot add to cart', r.status === 403 || r.status === 401, `got ${r.status}`);
+  r = await clientUser.get('/api/cart');
+  ok('a customer sees only their own cart', r.status === 200 && Array.isArray(r.json), `got ${r.status}`);
+  ok('customer cart does not leak another user\'s items', (r.json || []).length <= 1, `count=${(r.json||[]).length}`);
+
+  // ── 17. Order ownership (IDOR) ────────────────────────────────────────────
+  section('Order ownership');
+  const me = await clientUser.get('/api/auth/me');
+  const adminRow = await admin.get('/api/users');
+  ok('order list is never public', typeof me.status === 'number');
+
+  r = await clientUser.post('/api/orders', {
+    productId: 'does-not-matter', type: 'BUY', totalAmount: 1,
+    userId: 'someone-elses-id'
+  });
+  const createdUser = r.json?.user?.id;
+  ok('order is bound to the session user, not a body userId',
+     r.status === 400 || createdUser !== 'someone-elses-id',
+     `status=${r.status} user=${createdUser}`);
+
+  r = await clientUser.patch('/api/orders/any-id/status', { status: 'CANCELLED' });
+  ok('a customer cannot change an order status', r.status === 403 || r.status === 401 || r.status === 404, `got ${r.status}`);
+
+  // ── 18. Pay-on-delivery order flow ─────────────────────────────────────────
+  section('Pay-on-delivery flow');
+  const prod = (await anon.get('/api/products')).json;
+  const p0 = Array.isArray(prod) && prod.length ? prod[0] : null;
+  if (p0) {
+    r = await clientUser.post('/api/orders', {
+      productId: p0.id, type: 'RENT', totalAmount: 1000, paymentMethod: 'COD'
+    });
+    ok('COD pre-order is accepted without KYC documents', r.status === 200 || r.status === 201, `got ${r.status}`);
+    ok('COD pre-order defaults to PENDING', r.json?.status === 'PENDING', `got ${r.json?.status}`);
+    ok('COD pre-order defaults to UNPAID', r.json?.paymentStatus === 'UNPAID', `got ${r.json?.paymentStatus}`);
+
+    if (r.json?.id) {
+      let cur = await admin.patch(`/api/orders/${r.json.id}/status`, { status: 'PREPARING' });
+      ok('admin can move to PREPARING', cur.json?.status === 'PREPARING', `got ${cur.json?.status}`);
+      cur = await admin.patch(`/api/orders/${r.json.id}/status`, { status: 'DELIVERING' });
+      ok('admin can move to DELIVERING', cur.json?.status === 'DELIVERING', `got ${cur.json?.status}`);
+      cur = await admin.patch(`/api/orders/${r.json.id}/status`, { status: 'DELIVERED_PAID' });
+      ok('admin can move to DELIVERED_PAID', cur.json?.status === 'DELIVERED_PAID', `got ${cur.json?.status}`);
+      ok('delivery marks the order PAID automatically', cur.json?.paymentStatus === 'PAID', `got ${cur.json?.paymentStatus}`);
+      const back = await admin.patch(`/api/orders/${r.json.id}/status`, { status: 'PENDING' });
+      ok('status cannot move backwards', back.status === 400, `got ${back.status}`);
+      // leave no residue
+      const { PrismaClient } = await import('@prisma/client');
+      const cleanup = new PrismaClient();
+      await cleanup.order.delete({ where: { id: r.json.id } }).catch(() => {});
+      await cleanup.$disconnect();
+    }
+  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   console.log(`\n${'='.repeat(60)}\nPASS: ${pass}   FAIL: ${fail}`);

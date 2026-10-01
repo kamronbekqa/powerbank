@@ -24,7 +24,9 @@ export default function Navbar({
   setTheme,
   t,
   wishlistCount,
-  onOpenWishlist
+  onOpenWishlist,
+  onOpenCart,
+  cartCount = 0
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
@@ -421,13 +423,31 @@ export default function Navbar({
                       {lang === 'RU' ? 'Мои Аренды' : lang === 'EN' ? 'My Rentals' : 'Mening Ijaralarim'}
                     </button>
 
-                    {/* Wishlist / Cart Button */}
+                    {/* Cart Button (real cart) */}
                     <button
                       type="button"
-                      onClick={() => {
-                        if (onOpenWishlist) onOpenWishlist();
-                        setUserDropdownOpen(false);
+                      onClick={() => { if (onOpenCart) onOpenCart(); setUserDropdownOpen(false); }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '8px',
+                        width: '100%', padding: '8px 10px', border: 'none',
+                        borderRadius: '10px', background: 'transparent',
+                        color: 'var(--meco-text-main)', fontWeight: '600',
+                        fontSize: '0.8rem', cursor: 'pointer'
                       }}
+                    >
+                      <ShoppingCart size={15} style={{ color: '#f59e0b' }} />
+                      {lang === 'RU' ? 'Моя Корзина' : lang === 'EN' ? 'My Cart' : 'Savatim'}
+                      {cartCount > 0 && (
+                        <span style={{ marginLeft: 'auto', background: '#f59e0b', color: '#0f172a', borderRadius: '8px', padding: '1px 7px', fontSize: '0.7rem', fontWeight: '800' }}>
+                          {cartCount}
+                        </span>
+                      )}
+                    </button>
+
+                    {/* Wishlist Button */}
+                    <button
+                      type="button"
+                      onClick={() => { if (onOpenWishlist) onOpenWishlist(); setUserDropdownOpen(false); }}
                       style={{
                         display: 'flex', alignItems: 'center', gap: '8px',
                         width: '100%', padding: '8px 10px', border: 'none',
@@ -437,7 +457,7 @@ export default function Navbar({
                       }}
                     >
                       <Heart size={15} style={{ color: '#ef4444' }} />
-                      {lang === 'RU' ? 'Моя Корзина' : lang === 'EN' ? 'My Wishlist' : 'Mening Savatim'}
+                      {lang === 'RU' ? 'Избранное' : lang === 'EN' ? 'Wishlist' : 'Yoqtirganlarim'}
                       {wishlistCount > 0 && (
                         <span style={{ marginLeft: 'auto', background: '#ef4444', color: '#fff', borderRadius: '8px', padding: '1px 7px', fontSize: '0.7rem', fontWeight: '800' }}>
                           {wishlistCount}

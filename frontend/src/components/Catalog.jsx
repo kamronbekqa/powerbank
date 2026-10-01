@@ -12,7 +12,7 @@ const FALLBACK_IMAGES = [
   'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&auto=format&fit=crop&q=80'
 ];
 
-export default function Catalog({ products, onSelectProduct, onViewProduct, onAddToWishlist, wishlist = [], loading = false, t = {}, lang = 'UZ' }) {
+export default function Catalog({ products, onSelectProduct, onViewProduct, onAddToWishlist, onAddToCart, wishlist = [], loading = false, t = {}, lang = 'UZ' }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCapacity, setSelectedCapacity] = useState('ALL');
   const [imageErrors, setImageErrors] = useState({});
@@ -195,7 +195,9 @@ export default function Catalog({ products, onSelectProduct, onViewProduct, onAd
                       return (
                         <button
                           onClick={(e) => { e.stopPropagation(); onAddToWishlist(product, inWishlist?.tag === 'favorite' ? 'planned' : 'favorite'); }}
-                          title={inWishlist ? 'Savatda bor' : 'Savatga qo\'shish'}
+                          title={inWishlist
+                            ? (lang === 'RU' ? 'В избранном' : lang === 'EN' ? 'In wishlist' : 'Yoqtirganlarda bor')
+                            : (lang === 'RU' ? 'В избранное' : lang === 'EN' ? 'Add to wishlist' : 'Yoqtirganlarga qo\'shish')}
                           style={{
                             background: inWishlist ? '#ef4444' : 'rgba(15,23,42,0.75)',
                             border: inWishlist ? '1.5px solid #ef4444' : '1.5px solid rgba(255,255,255,0.2)',
@@ -310,6 +312,20 @@ export default function Catalog({ products, onSelectProduct, onViewProduct, onAd
                     {t.ijaragaOlish || 'Ijaraga Olish'}
                   </button>
                 </div>
+                {/* Add to cart — works for guests too (localStorage) */}
+                {onAddToCart && (
+                  <button
+                    className="btn btn-sm"
+                    onClick={() => onAddToCart(product, 'RENT')}
+                    style={{
+                      marginTop: '0.45rem', width: '100%', justifyContent: 'center', fontWeight: '700',
+                      background: 'transparent', border: '1px solid var(--meco-border)', color: 'var(--meco-primary)'
+                    }}
+                  >
+                    <ShoppingCart size={15} />
+                    {lang === 'RU' ? 'В корзину' : lang === 'EN' ? 'Add to cart' : 'Savatga qo\'shish'}
+                  </button>
+                )}
               </div>
             </div>
           );
