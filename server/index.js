@@ -9,7 +9,7 @@ import crypto from 'node:crypto';
 import {
   hashPassword, verifyPassword, isHashed, publicUser,
   requireAuth, requireAdmin, optionalAuth,
-  csrfProtection, issueCsrfToken, rateLimit, securityHeaders,
+  csrfProtection, issueCsrfToken, verifyCsrfToken, CSRF_COOKIE, rateLimit, securityHeaders,
   v, ValidationError, errorHandler
 } from './lib/security.js';
 import {
@@ -233,6 +233,20 @@ app.use(csrfProtection);
 
 // Broad, DoS-safe ceiling for the whole API.
 app.use('/api', rateLimit({ windowMs: 60_000, max: 300 }));
+
+// Hand the CSRF token to the browser as JSON.
+//
+// The double-submit cookie is set on the API's own domain. When the frontend is
+// served from a different origin (e.g. the site on Netlify, the API on Render),
+// document.cookie cannot see it, so the client would have no token to echo and
+// every write would fail with "CSRF token topilmadi". This endpoint returns the
+// same value the server holds, which works regardless of domain layout.
+app.get('/api/csrf-token', (req, res) => {
+  // Reuse the existing token when still valid, otherwise issue a fresh one.
+  const existing = req.cookies?.[CSRF_COOKIE];
+  const token = existing && verifyCsrfToken(existing) ? existing : issueCsrfToken(res);
+  res.json({ token });
+});
 
 app.get('/api/health', async (_req, res) => {
   try {

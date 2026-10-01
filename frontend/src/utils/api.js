@@ -13,6 +13,28 @@ function readCookie(name) {
     ?.split('=')[1] ?? null;
 }
 
+// When the API lives on a different origin than the page, the cookie belongs to
+// the API domain and document.cookie cannot see it. In that case we ask the
+// server for the value once and keep it in memory.
+let memoryToken = null;
+let tokenPromise = null;
+
+async function fetchCsrfToken() {
+  if (memoryToken) return memoryToken;
+  if (!tokenPromise) {
+    tokenPromise = fetch(apiUrl('/api/csrf-token'), { credentials: 'include' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { memoryToken = d?.token || null; return memoryToken; })
+      .catch(() => null)
+      .finally(() => { tokenPromise = null; });
+  }
+  return tokenPromise;
+}
+
+async function resolveCsrfToken() {
+  return readCookie('csrf_token') || (await fetchCsrfToken());
+}
+
 /**
  * Single entry point for API calls.
  * Always sends the session cookie and echoes the CSRF token, so the backend
@@ -24,7 +46,7 @@ export async function apiFetch(path, { method = 'GET', body, headers = {}, signa
   const finalHeaders = { 'Content-Type': 'application/json', ...headers };
 
   if (!['GET', 'HEAD', 'OPTIONS'].includes(verb)) {
-    const csrf = readCookie('csrf_token');
+    const csrf = await resolveCsrfToken();
     if (csrf) finalHeaders['x-csrf-token'] = csrf;
   }
 
@@ -39,26 +61,22 @@ export async function apiFetch(path, { method = 'GET', body, headers = {}, signa
   // The CSRF cookie is short-lived. If it has expired, a mutating request is
   // rejected with "CSRF token topilmadi" until some other request re-issues it.
   // Fetch one quietly and retry instead of making the user reload the page.
-  if (!['GET', 'HEAD', 'OPTIONS'].includes(verb) && !readCookie('csrf_token')) {
-    try {
-      await fetch(apiUrl('/api/health'), { credentials: 'include' });
-      const fresh = readCookie('csrf_token');
-      if (fresh) finalHeaders['x-csrf-token'] = fresh;
-    } catch { /* fall through and let the server decide */ }
+  // Ensure we have a token before the first attempt.
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(verb) && !finalHeaders['x-csrf-token']) {
+    const fresh = await fetchCsrfToken();
+    if (fresh) finalHeaders['x-csrf-token'] = fresh;
   }
 
   let res = await send();
 
-  // One retry if the token turned out to be stale.
+  // One retry if the token turned out to be stale or rejected.
   if (res.status === 403 && !['GET', 'HEAD', 'OPTIONS'].includes(verb)) {
-    try {
-      await fetch(apiUrl('/api/health'), { credentials: 'include' });
-      const fresh = readCookie('csrf_token');
-      if (fresh && fresh !== finalHeaders['x-csrf-token']) {
-        finalHeaders['x-csrf-token'] = fresh;
-        res = await send();
-      }
-    } catch { /* keep the original response */ }
+    memoryToken = null;
+    const fresh = await fetchCsrfToken();
+    if (fresh && fresh !== finalHeaders['x-csrf-token']) {
+      finalHeaders['x-csrf-token'] = fresh;
+      res = await send();
+    }
   }
 
   let data = null;

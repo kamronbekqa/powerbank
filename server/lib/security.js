@@ -168,6 +168,8 @@ export function csrfProtection(req, res, next) {
     return next();
   }
   if (req.path === '/api/telegram/webhook') return next(); // inbound from Telegram
+  // GET endpoint that hands the token to the browser; never needs one itself.
+  if (req.path === '/api/csrf-token') return next();
 
   const cookieToken = req.cookies?.[CSRF_COOKIE];
   const headerToken = req.get('x-csrf-token');
@@ -181,7 +183,7 @@ export function csrfProtection(req, res, next) {
   next();
 }
 
-export { CSRF_COOKIE };
+export { CSRF_COOKIE, verifyCsrfToken };
 
 // ── Rate limiting (in-memory, sliding window) ──────────────────────────────
 function clientIp(req) {
