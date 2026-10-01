@@ -25,6 +25,7 @@ export default function AdminCRM({
   onEditProduct,
   onDeleteProduct,
   onDeleteContactMessage,
+  onDeleteUser,
   onViewProductAsClient,
   onRefreshData,
   t = {},
@@ -772,6 +773,26 @@ export default function AdminCRM({
                               </td>
                               <td style={{ padding: '12px', color: 'var(--meco-text-muted)', fontSize: '0.82rem' }}>
                                 {u.createdAt ? new Date(u.createdAt).toLocaleDateString('uz-UZ') : 'Yangi'}
+                              </td>
+                              <td style={{ padding: '12px', textAlign: 'right' }}>
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-danger"
+                                  title="Akkauntni butunlay o'chirish"
+                                  disabled={busyMap[`del-${u.id}`]}
+                                  onClick={() => {
+                                    if (!window.confirm(`${u.fullName || u.phone} akkauntini butunlay o'chirilsizmi? Buyurtma, sharh va KYC yozuvlari ham o'chadi.`)) return;
+                                    busyMap[`del-${u.id}`] = true;
+                                    setBusyMap({ ...busyMap });
+                                    (onDeleteUser ? onDeleteUser(u.id) : Promise.reject(new Error("O'chirish funksiyasi mavjud emas")))
+                                      .then(() => onRefreshData?.())
+                                      .catch(err => alert("O'chirishda xatolik: " + (err?.message || err)))
+                                      .finally(() => { delete busyMap[`del-${u.id}`]; setBusyMap({ ...busyMap }); });
+                                  }}
+                                  style={{ padding: '4px 9px', fontSize: '0.75rem', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                >
+                                  <Trash2 size={13} /> O'chirish
+                                </button>
                               </td>
                             </tr>
                             );

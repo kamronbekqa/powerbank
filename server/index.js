@@ -1396,6 +1396,28 @@ app.patch('/api/verifications/:id', requireAdmin, async (req, res) => {
   }
 });
 
+// Remove a customer account. Used by the admin panel to clear accounts that
+// must not exist (duplicate sign-ups, test data). Deleting a user cascades to
+// their orders, reviews, KYC records, cart and wishlist.
+app.delete('/api/users/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (id === req.user.id) {
+      return res.status(400).json({ error: "O'z akkauntingizni o'chira olmaysiz." });
+    }
+    const target = await prisma.user.findUnique({ where: { id }, select: { id: true, role: true } });
+    if (!target) return res.status(404).json({ error: 'Foydalanuvchi topilmadi.' });
+    if (target.role === 'ADMIN') {
+      return res.status(400).json({ error: "Admin akkauntini o'chirish mumkin emas." });
+    }
+    await prisma.user.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[API ERROR] DELETE /api/users:', error.message);
+    res.status(500).json({ error: 'Serverda xatolik yuz berdi.' });
+  }
+});
+
 app.patch('/api/users/:id/kyc-status', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;

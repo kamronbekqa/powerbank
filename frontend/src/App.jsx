@@ -432,6 +432,16 @@ export default function App() {
     }
   };
 
+  const handleDeleteUser = async (id) => {
+    await apiFetch(`/api/users/${id}`, { method: 'DELETE' });
+    showToast(
+      lang === 'RU' ? 'Аккаунт удалён' :
+      lang === 'EN' ? 'Account deleted' :
+      'Akkaunt o\'chirildi',
+      'info'
+    );
+  };
+
   const handleDeleteContactMessage = async (id) => {
     try {
       await apiFetch(`/api/contacts/${id}`, { method: 'DELETE' });
@@ -753,6 +763,7 @@ export default function App() {
               onEditProduct={handleEditProduct}
               onDeleteProduct={handleDeleteProduct}
               onDeleteContactMessage={handleDeleteContactMessage}
+              onDeleteUser={handleDeleteUser}
               onViewProductAsClient={(product) => setViewingProduct(product)}
               onRefreshData={loadData}
               t={t}
